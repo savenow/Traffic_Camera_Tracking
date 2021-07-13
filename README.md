@@ -8,7 +8,7 @@ So far only escooters have been taken into account of this project. When all the
 
 ### Sample images from the trained model
 
-![alt text](/Sample_Labels/1.png | width=100)
+![alt text](/Sample_Labels/1.png =100x)
 
 ## Installation
 
