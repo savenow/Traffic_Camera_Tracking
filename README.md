@@ -6,6 +6,10 @@ So far only escooters have been taken into account of this project. When all the
 
 *For further updates on the project, follow this notion page: https://www.notion.so/Project-Traffic-Camera-tracking-15a9bb984c1341369ad40562610dc83f*
 
+### Sample images from the trained model
+
+![alt text]("./Sample_Labels/1.png")
+
 ## Installation
 
 _Yet to Implement_
