@@ -8,11 +8,8 @@ So far only escooters have been taken into account of this project. When all the
 
 ### Sample images from the trained model
 
-1 
-<img src="/Sample_Labels/1.png" width="600">
-2 
+<img src="/Sample_Labels/1.png" width="600"> 
 <img src="/Sample_Labels/2.png" width="600">
-3 
 <img src="/Sample_Labels/3.png" width="600">
 
 ## Installation
