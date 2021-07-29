@@ -6,12 +6,13 @@ setup_logger()
 # import some common detectron2 utilities
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
-from detectron2.config import get_cfg
+from detectron2.config import get_cfg, LazyConfig, CfgNode
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
 from detectron2.engine import DefaultTrainer
 from detectron2.evaluation import COCOEvaluator
+from omegaconf import OmegaConf
 
 # import some common libraries
 import numpy as np
@@ -303,14 +304,29 @@ def visualize(output_path):
 
 def loadConfig(weights_output_path):
         
-    cfg = get_cfg()
     #cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
     #cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
-    cfg.merge_from_file(model_zoo.get_config_file("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
+    
+    #cfg.merge_from_file(model_zoo.get_config("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
+    cfg = model_zoo.get_config_file('new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
+    cfg = LazyConfig.load(cfg)
+    overrides = [
+        'dataloader.train.dataset.names="escooter_train"', 
+        'dataloader.test.dataset.names="escooter_test"', 
+        f'train.output_dir="{weights_output_path}"',
+        'train.max_iter=8000',
+    ]
+    LazyConfig.apply_overrides(cfg, overrides)
+    #LazyConfig.save(cfg, weights_output_path + '/base_config.yaml')
+    with open(weights_output_path + '\\config.yaml', 'w') as fp:
+     resolved = OmegaConf.save(config=cfg, resolve=True, f=fp.name)
+     
     #cfg.merge_from_file('https://github.com/facebookresearch/detectron2/blob/master/configs/new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
     #cfg.merge_from_file(model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
     # model = model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py")
-
+    return
+    cfg = get_cfg()
+    cfg.merge_from_file(weights_output_path + '/base_config.yaml')
     cfg.DATASETS.TRAIN = ("escooter_train",)
     cfg.DATASETS.TEST = ('escooter_test',)
     cfg.DATALOADER.NUM_WORKERS = 0
@@ -370,4 +386,6 @@ def main():
 
     config_file = loadConfig(model_path)
     train(model_path, config_file)
+
+main()
     

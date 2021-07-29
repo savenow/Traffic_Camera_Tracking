@@ -37,13 +37,13 @@ def LoopThroughFiles(dir_path):
 # Path for remote PC
 
 # Path to PyTesseract CMD
-#pytesseract.pytesseract.tesseract_cmd = r'C:\Users\balaji\AppData\Local\Programs\Tesseract-OCR\tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Users\balaji\AppData\Local\Programs\Tesseract-OCR\tesseract'
 #image_path = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Date_Time_Test\frame_000003.png'
 
 # Path for my personal Windows PC
 
 # Path to PyTesseract CMD
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+#pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 image_path = os.path.abspath(r'.\Sample_Pictures\OCR\Zoomed_in_3.png')
 dir_path = os.path.abspath(r'.\Sample_Pictures\OCR\\')
 
