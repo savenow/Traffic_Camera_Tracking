@@ -10,7 +10,7 @@ import numpy as np
 import os, json, cv2, random
 from os import path
 
-# import some common detectron2 utilities
+# import some common detectron2 utilitie s
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg
