@@ -17,6 +17,7 @@ from detectron2.config import get_cfg
 from detectron2.utils.visualizer import Visualizer, ColorMode
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
+from detectron2.structures import Instances
 
 import json
 from copy import deepcopy
@@ -87,10 +88,10 @@ def Visualize(cfg, input_path, output_path, meta_path):
                       scale=1, 
                       instance_mode=ColorMode.SEGMENTATION
       )
-      print(outputs)
+      print(outputs['instances']instances.num_instances])
       
       v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-      video_output.write(v.get_image()[:, :, ::-1])
+      #video_output.write(v.get_image()[:, :, ::-1])
 
       framecount += 1
   
@@ -104,8 +105,8 @@ def Visualize(cfg, input_path, output_path, meta_path):
 
 def main():
   model_weights = path.abspath(r"C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\2_7250\model_final.pth")
-  video_path = path.abspath(r"C:\Vishal-Videos\Project_Escooter_Tracking\input\24\24.mp4")
-  inference_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\2_7250.mp4')
+  video_path = path.abspath(r"C:\Vishal-Videos\Project_Escooter_Tracking\input\26\26.mp4")
+  inference_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\2_7250_3.mp4')
   metadata_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\metadata.json')
   config_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\config.yaml')
   test_dataset_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Test.json')
