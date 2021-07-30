@@ -82,8 +82,6 @@ class Inference():
 
         return cfg, Escooter_Metadata
 
-    def return_outputs(self, frame):
-        return self.predictor(frame)
 
     def display(self, frame):
         cv2.imshow(self.Window_Name, frame)
@@ -104,13 +102,15 @@ class Inference():
         
         if self.isImage:
             frame = cv2.imread(self.input_path)
+            output = self.predictor(frame)
+            if mode == 'output':
+                return output
             Visualize = MyVisualizer(
                 frame[:, :, ::-1],
                 metadata=self.metadata, 
                 scale=scale, 
                 instance_mode=ColorMode.SEGMENTATION
-            )
-            output = self.return_outputs(frame)
+            )      
             output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
 
             if mode == 'display':
@@ -132,13 +132,17 @@ class Inference():
             while video_capture.isOpened():
                 _, frame = video_capture.read()
                 if _:   
+                    output = self.predictor(frame)
+                    if mode == 'output':
+                        if len(output['instances']) >= 1:
+                            pass
                     Visualize = MyVisualizer(
                         frame[:, :, ::-1],
                         metadata=self.metadata, 
                         scale=scale, 
                         instance_mode=ColorMode.SEGMENTATION
                     )
-                    output = self.return_outputs(frame)
+                    
                     output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
 
                     if mode == 'display':
@@ -164,6 +168,9 @@ class Inference():
         self.output_path = output_path
         self.__process(scale, mode='save_clip')
 
+    def output(self, scale):
+        return self.__process(scale, mode='output')
+
 def main():
     model_weights = path.abspath(r"C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\2_7250\model_final.pth")
     video_path = path.abspath(r"C:\Vishal-Videos\Project_Escooter_Tracking\input\33\33.mp4")
@@ -179,4 +186,4 @@ def main():
     inference.show(scale=0.7)
     #inference.save(output_path=inference_path, scale=0.7)
 
-main()
+#main()
