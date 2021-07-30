@@ -12,6 +12,19 @@ in the config file and implement a new train_net.py to handle them.
 """
 import logging
 
+import torch, torchvision
+import detectron2
+from detectron2.utils.logger import setup_logger
+setup_logger()
+
+# import some common detectron2 utilities
+from detectron2 import model_zoo
+from detectron2.engine import DefaultPredictor, DefaultTrainer
+from detectron2.config import get_cfg, LazyConfig, CfgNode, instantiate
+from detectron2.utils.visualizer import Visualizer
+from detectron2.data import MetadataCatalog, DatasetCatalog
+from detectron2.data.datasets import register_coco_instances
+from detectron2.evaluation import COCOEvaluator, inference_on_dataset, print_csv_format
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import LazyConfig, instantiate
 from detectron2.engine import (
@@ -24,11 +37,17 @@ from detectron2.engine import (
     launch,
 )
 from detectron2.engine.defaults import create_ddp_model
-from detectron2.evaluation import inference_on_dataset, print_csv_format
 from detectron2.utils import comm
 
 logger = logging.getLogger("detectron2")
 
+# import some common libraries
+import numpy as np
+import os, json, cv2, random
+from os.path import abspath
+import json
+from copy import deepcopy
+import random
 
 def do_test(cfg, model):
     if "evaluator" in cfg.dataloader:
@@ -103,7 +122,7 @@ def do_train(args, cfg):
     trainer.train(start_iter, cfg.train.max_iter)
 
 
-def main(args):
+def main_train(args):
     cfg = LazyConfig.load(args.config_file)
     cfg = LazyConfig.apply_overrides(cfg, args.opts)
     default_setup(cfg, args)
@@ -118,10 +137,52 @@ def main(args):
         do_train(args, cfg)
 
 
-if __name__ == "__main__":
-    args = default_argument_parser().parse_args()
+def loadDataset(train, valid, test):
+    # Registers the annotation from the json files 
+    try:
+        register_coco_instances("escooter_train", {}, train, '')
+    except AssertionError:
+        pass
+
+    try:
+        register_coco_instances("escooter_valid", {}, valid, '')
+    except AssertionError:
+        pass
+        
+    try:
+        register_coco_instances("escooter_test", {}, test, '')
+    except AssertionError:
+        pass
+
+if __name__ == '__main__':
+    test_path = abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Test.json')
+    train_path = abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Train.json')
+    valid_path = abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Valid.json')
+
+    model_path = abspath(r"C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep")
+
+    # We are skipping the processing annotation step as it has already been done
+    loadDataset(train=train_path, test=test_path, valid=valid_path)
+
+    argument_list = [
+        '--config-file', r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Detectron2_New\detectron2\configs\new_baselines\mask_rcnn_R_101_FPN_400ep_LSJ.py', 
+        'dataloader.train.dataset.names="escooter_train"',
+        'dataloader.test.dataset.names="escooter_test"', 
+        
+        f'train.init_checkpoint={model_path + "/new_baseline_R101_FPN_Base.pkl"}',
+        f'train.output_dir="{model_path}"',
+        'train.max_iter=8000',
+        #'dataloader.train.warmup_length=800',
+        'dataloader.train.num_workers=1',
+        'optimizer.lr=0.00025',
+        #'dataloader.train.num_classes=1',
+        'model.roi_heads.num_classes=1',
+    ]
+    args = default_argument_parser().parse_args(argument_list)
+    
+    
     launch(
-        main,
+        main_train,
         args.num_gpus,
         num_machines=args.num_machines,
         machine_rank=args.machine_rank,

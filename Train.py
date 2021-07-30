@@ -313,13 +313,22 @@ def loadConfig(weights_output_path):
     overrides = [
         'dataloader.train.dataset.names="escooter_train"', 
         'dataloader.test.dataset.names="escooter_test"', 
+        
+        f'train.init_checkpoint={weights_output_path + "/new_baseline_R101_FPN_Base.pkl"}',
         f'train.output_dir="{weights_output_path}"',
         'train.max_iter=8000',
+        'dataloader.train.warmup_length=800',
+        'dataloader.train.num_workers=1',
+        'optimizer.lr=0.00025',
+        'dataloader.train.num_classes=1',
+        'model.roi_heads.num_classes=1',
+        
     ]
     LazyConfig.apply_overrides(cfg, overrides)
-    #LazyConfig.save(cfg, weights_output_path + '/base_config.yaml')
-    with open(weights_output_path + '\\config.yaml', 'w') as fp:
-     resolved = OmegaConf.save(config=cfg, resolve=True, f=fp.name)
+    #LazyConfig.save(cfg, weights_output_path + '/base_config.txt')
+    print(cfg)
+    with open(weights_output_path + '/base_config.json', 'w') as f:
+        json.dump(cfg, f)
      
     #cfg.merge_from_file('https://github.com/facebookresearch/detectron2/blob/master/configs/new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
     #cfg.merge_from_file(model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
