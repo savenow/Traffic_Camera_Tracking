@@ -134,6 +134,8 @@ def main_train(args):
         DetectionCheckpointer(model).load(cfg.train.init_checkpoint)
         print(do_test(cfg, model))
     else:
+        print(cfg)
+        return
         do_train(args, cfg)
 
 
