@@ -69,7 +69,7 @@ class Inference():
         cfg.SOLVER.STEPS = []        
         cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
         cfg.MODEL.WEIGHTS = self.weights_path
-        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.7 
+        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.87 
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1  
         cfg.freeze()
 
@@ -77,7 +77,7 @@ class Inference():
         Escooter_Metadata.set(
             thing_classes=["Escooter"],
             thing_dataset_id_to_contiguous_id={1: 0},
-            thing_colors=[(255, 0, 0)]    
+            thing_colors=[(255, 99, 99)]    
         )
 
         return cfg, Escooter_Metadata
@@ -86,24 +86,29 @@ class Inference():
         return self.predictor(frame)
 
     def display(self, frame):
-        cv2.imshow(self.Window, frame)
+        cv2.imshow(self.Window_Name, frame)
 
         if self.isImage:
             cv2.waitKey(0)
         else:
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 return True
             else:
                 return False
 
     def __process(self, scale, mode='display'):
-        self.Window = cv2.namedWindow('Output', cv2.WINDOW_NORMAL)
+        if mode == 'display':
+            self.Window_Name = 'Output'
+            cv2.namedWindow(self.Window_Name, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(self.Window_Name, 1280, 720)
+        
         if self.isImage:
             frame = cv2.imread(self.input_path)
-            Visualize = MyVisualizer(frame[:, :, ::-1],
-                            metadata=self.metadata, 
-                            scale=scale, 
-                            instance_mode=ColorMode.SEGMENTATION
+            Visualize = MyVisualizer(
+                frame[:, :, ::-1],
+                metadata=self.metadata, 
+                scale=scale, 
+                instance_mode=ColorMode.SEGMENTATION
             )
             output = self.return_outputs(frame)
             output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
@@ -117,8 +122,8 @@ class Inference():
             video_capture = cv2.VideoCapture(self.input_path)
 
             if mode == 'save_clip':
-                width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-                height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH) * scale)
+                height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT) * scale)
                 fps = int(video_capture.get(cv2.CAP_PROP_FPS))
                 codec = 'mp4v'
 
@@ -127,17 +132,21 @@ class Inference():
             while video_capture.isOpened():
                 _, frame = video_capture.read()
                 if _:   
-                    Visualize = MyVisualizer(frame[:, :, ::-1],
-                                    metadata=self.metadata, 
-                                    scale=scale, 
-                                    instance_mode=ColorMode.SEGMENTATION
+                    Visualize = MyVisualizer(
+                        frame[:, :, ::-1],
+                        metadata=self.metadata, 
+                        scale=scale, 
+                        instance_mode=ColorMode.SEGMENTATION
                     )
                     output = self.return_outputs(frame)
                     output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
 
                     if mode == 'display':
-                        self.display(output_img)
+                        toClose = self.display(output_img)
+                        if toClose:
+                            break
                     elif mode == 'save_clip':
+                        print('Saving Clip......')
                         video_output.write(output_img)
                 else:
                     break
@@ -157,13 +166,17 @@ class Inference():
 
 def main():
     model_weights = path.abspath(r"C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\2_7250\model_final.pth")
-    video_path = path.abspath(r"C:\Vishal-Videos\Project_Escooter_Tracking\input\24\24.mp4")
-    #inference_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\2_7250_3.mp4')
+    video_path = path.abspath(r"C:\Vishal-Videos\Project_Escooter_Tracking\input\33\33.mp4")
+    inference_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\2_7250_3.mp4')
     #metadata_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\metadata.json')
     #config_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\config.yaml')
     test_dataset_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Test.json')
 
-    inference = Inference(model_weights, test_dataset_path, video_path, mode='Video')
+    video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
+    video_sample_1 = video_samples_path + '\\08-06-2021_08-00.mkv'
+    
+    inference = Inference(model_weights, test_dataset_path, video_sample_1, mode='Video')
     inference.show(scale=0.7)
+    #inference.save(output_path=inference_path, scale=0.7)
 
 main()
