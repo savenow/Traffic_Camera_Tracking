@@ -13,7 +13,7 @@ from os import path
 # import some common detectron2 utilitie s
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
-from detectron2.config import get_cfg
+from detectron2.config import get_cfg, LazyConfig, instantiate
 from detectron2.utils.visualizer import Visualizer, ColorMode
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
@@ -35,8 +35,9 @@ class MyVisualizer(Visualizer):
 
 class Inference():
 
-    def __init__(self, weights_path, test_dataset_path, input, output=None, mode='Image'):
+    def __init__(self, pre_config_path, weights_path, test_dataset_path, input, output=None, mode='Image', cfg='py'):
         self.weights_path = weights_path
+        self.pre_config_path = pre_config_path
         self.test_dataset = test_dataset_path
         self.input_path = input
         self.output_path = output
@@ -49,14 +50,26 @@ class Inference():
         else:
             raise RuntimeError("Invalid Mode: Only available modes are 'Video' and 'Image' !!!")
 
-        self.cfg, self.metadata = self.setup_cfg()
+        self.metadata = MetadataCatalog.get('escooter_test')
+        self.metadata.set(
+            thing_classes=["Escooter"],
+            thing_dataset_id_to_contiguous_id={1: 0},
+            thing_colors=[(255, 99, 99)]    
+        )
+
+        if cfg == 'yaml':
+            self.cfg = self.setup_cfg()
+        elif cfg == 'py':
+            self.cfg = self.setup_cfg_py()
+        else:
+            raise RuntimeError("Invalid cfg config: Only available configs are 'py' and 'yaml' !!!")
         self.predictor = DefaultPredictor(self.cfg)
         
 
     def setup_cfg(self):
         # load config from file and command-line arguments
         cfg = get_cfg()
-        cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
+        cfg.merge_from_file(model_zoo.get_config_file(self.pre_config_path))
         
         # To prevent repeated registering of the same dataset
         try:
@@ -78,15 +91,32 @@ class Inference():
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1  
         cfg.freeze()
 
-        Escooter_Metadata = MetadataCatalog.get('escooter_test')
-        Escooter_Metadata.set(
-            thing_classes=["Escooter"],
-            thing_dataset_id_to_contiguous_id={1: 0},
-            thing_colors=[(255, 99, 99)]    
-        )
+        return cfg
 
-        return cfg, Escooter_Metadata
+    def setup_cfg_py(self):
+        
+        argument_list = [
+            # '--config-file', pre_config_path, 
+            #'dataloader.train.dataset.names="escooter_train"',
+            'dataloader.test.dataset.names="escooter_test"', 
+            'dataloader.train.total_batch_size=1',
+            f'train.init_checkpoint={self.weights_path}',
+            f'train.output_dir="{self.output_path}"',
+            'train.max_iter=8000',
+            #'dataloader.train.warmup_length=800',
+            'dataloader.train.num_workers=1',
+            'optimizer.lr=0.00025',
+            #'dataloader.train.num_classes=1',
+            'model.roi_heads.num_classes=1',
+            "model.backbone.bottom_up.stages.norm='BN'",
+            "model.backbone.bottom_up.stem.norm='BN'",
+            "model.backbone.norm='BN'",
+        ]
 
+        cfg = LazyConfig.load(self.pre_config_path)
+        cfg = LazyConfig.apply_overrides(cfg, argument_list)
+
+        return instantiate(cfg)
 
     def display(self, frame):
         cv2.imshow(self.Window_Name, frame)
@@ -183,11 +213,16 @@ def main():
     #metadata_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\metadata.json')
     #config_path = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\config.yaml')
     test_dataset_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Test.json')
+    pre_config = "COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"
 
+    pre_config_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Detectron2_New\detectron2\configs\new_baselines\mask_rcnn_R_101_FPN_400ep_LSJ.py')
+    model_weights_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep\new_baseline_R101_FPN_Base.pkl')
+    output_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep')
+    
     video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
     video_sample_1 = video_samples_path + '\\08-06-2021_08-00.mkv'
     
-    inference = Inference(model_weights, test_dataset_path, video_sample_1, mode='Video')
+    inference = Inference(model_weights_new, test_dataset_path, video_sample_1, mode='Video')
     inference.show(scale=0.7)
     #inference.save(output_path=inference_path, scale=0.7)
 

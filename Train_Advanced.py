@@ -167,11 +167,11 @@ if __name__ == '__main__':
     loadDataset(train=train_path, test=test_path, valid=valid_path)
 
     argument_list = [
-        '--config-file', r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Detectron2_New\detectron2\configs\new_baselines\mask_rcnn_R_50_FPN_400ep_LSJ.py', 
+        '--config-file', r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Detectron2_New\detectron2\configs\new_baselines\mask_rcnn_R_101_FPN_400ep_LSJ.py', 
         'dataloader.train.dataset.names="escooter_train"',
         'dataloader.test.dataset.names="escooter_test"', 
-        'dataloader.train.total_batch_size=1',
-        f'train.init_checkpoint={model_path + "/new_baseline_R50_FPN_Base.pkl"}',
+        'dataloader.train.total_batch_size=2',
+        f'train.init_checkpoint={model_path + "/new_baseline_R101_FPN_Base.pkl"}',
         f'train.output_dir="{model_path}"',
         'train.max_iter=8000',
         #'dataloader.train.warmup_length=800',
