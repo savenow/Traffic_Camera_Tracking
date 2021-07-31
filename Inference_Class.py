@@ -58,7 +58,12 @@ class Inference():
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
         
-        register_coco_instances('escooter_test', {}, self.test_dataset, '')
+        # To prevent repeated registering of the same dataset
+        try:
+            register_coco_instances('escooter_test', {}, self.test_dataset, '')
+        except AssertionError:
+            pass
+
         cfg.DATASETS.TEST = ('escooter_test',)
         cfg.DATALOADER.NUM_WORKERS = 0
         # load weights
@@ -122,6 +127,7 @@ class Inference():
             video_capture = cv2.VideoCapture(self.input_path)
 
             if mode == 'save_clip':
+                print('Saving Clip......')
                 width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH) * scale)
                 height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT) * scale)
                 fps = int(video_capture.get(cv2.CAP_PROP_FPS))
@@ -150,7 +156,6 @@ class Inference():
                         if toClose:
                             break
                     elif mode == 'save_clip':
-                        print('Saving Clip......')
                         video_output.write(output_img)
                 else:
                     break

@@ -14,4 +14,7 @@ def process():
             print(videos)
             video_path = video_sample_path + f'//{videos}'
             inference = Inference(model_weights, test_dataset_path, video_path, mode='Video')
-            inference.
+            output_file_name = video_sample_path + '//infered//' + videos 
+            inference.save(output_path=output_file_name, scale=0.8)
+
+process()
