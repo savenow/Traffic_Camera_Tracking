@@ -29,9 +29,9 @@ class setup_cfg():
         )
 
         if cfg_mode == '.yaml':
-            self.cfg = self.setup_cfg()
+            self.setup_cfg_yaml()
         elif cfg_mode == '.py':
-            self.cfg = self.setup_cfg_py()
+            self.setup_cfg_py()
         else:
             raise RuntimeError("Invalid cfg config: Only available configs are 'py' and 'yaml' !!!")
 
@@ -72,7 +72,6 @@ class setup_cfg():
             'dataloader.test.dataset.names="escooter_test"', 
             'dataloader.train.total_batch_size=1',
             f'train.init_checkpoint={self.weights_path}',
-            f'train.output_dir="{self.output_path}"',
             'train.max_iter=8000',
             #'dataloader.train.warmup_length=800',
             'dataloader.train.num_workers=1',

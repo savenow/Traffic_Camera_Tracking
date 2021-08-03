@@ -48,8 +48,9 @@ class Inference():
         else:
             raise RuntimeError("Invalid Mode: Only available modes are 'Video' and 'Image' !!!")
             
-        self.cfg = setup_cfg(pre_config_path=pre_config_path, weights_path=weights_path, test_dataset_path=test_dataset_path, cfg_mode=cfg)
-        self.predictor = DefaultPredictor(self.cfg)
+        cfg = setup_cfg(pre_config_path=pre_config_path, weights_path=weights_path, test_dataset_path=test_dataset_path, cfg_mode=cfg)
+        cfg = instantiate(cfg)
+        self.predictor = DefaultPredictor(cfg)
         
 
 
@@ -136,6 +137,7 @@ class Inference():
 
     def save(self, output_path, scale):
         self.output_path = output_path
+        self.cfg = LazyConfig.apply_overrides(self.cfg, [f'train.output_dir="{self.output_path}"',])
         self.__process(scale, mode='save_clip')
 
     def output(self, scale):
@@ -157,8 +159,8 @@ def main():
     video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
     video_sample_1 = video_samples_path + '\\08-06-2021_08-00.mkv'
     
-    inference = Inference(model_weights_new, test_dataset_path, video_sample_1, mode='Video')
+    inference = Inference(pre_config_new, model_weights_new, test_dataset_path, video_sample_1, mode='Video')
     inference.show(scale=0.7)
     #inference.save(output_path=inference_path, scale=0.7)
 
-#main()
+main()

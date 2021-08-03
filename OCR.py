@@ -29,7 +29,9 @@ def OCR_image(img_path, display_image=False):
     
     return date_time
 
-def OCR(frame):
+def extract_date_time(frame):
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Users\balaji\AppData\Local\Programs\Tesseract-OCR\tesseract'
+
     # date_time_coordinates: (0, 0) till (570, 40)
     text_roi = frame[0:40, 0:570]
 
@@ -63,3 +65,4 @@ def main():
     dir_path = os.path.abspath(r'.\Sample_Pictures\OCR\\')
 
     LoopThroughFiles(dir_path)
+

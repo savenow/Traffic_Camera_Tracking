@@ -13,8 +13,11 @@ def process():
         if videos[-4:] in ['.mkv', '.mp4', '.avi']:
             print(videos)
             video_path = video_sample_path + f'//{videos}'
-            inference = Inference(model_weights, test_dataset_path, video_path, mode='Video')
+            inference = Inference(model_weights, test_dataset_path, video_path, mode='Video', cfg='.yaml')
             output_file_name = video_sample_path + '//infered//' + videos 
-            inference.save(output_path=output_file_name, scale=0.8)
+            if not os.path.isfile(output_file_name):
+                inference.save(output_path=output_file_name, scale=0.8)
+            else:
+                print(f'{output_file_name} already exists')
 
 process()
