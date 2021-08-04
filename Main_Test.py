@@ -2,8 +2,11 @@ import torch, torchvision
 from IPython.display import Image, display
 
 import detectron2
+
+import logging
 from detectron2.utils.logger import setup_logger
 setup_logger()
+logger = logging.getLogger("detectron2")
 
 # import some common libraries
 import numpy as np
@@ -19,7 +22,7 @@ from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.data.datasets import register_coco_instances
 from detectron2.structures import Instances
 
-from setup_cfg import setup_cfg
+#from setup_cfg import setup_cfg
 from OCR import extract_date_time
 
 import json
@@ -50,6 +53,7 @@ class Main():
         self.test_dataset = test_dataset_path
 
         cfg = self.loadcfg()
+        #cfg = self.setup_cfg_py()
         self.predictor = DefaultPredictor(cfg)
         
         self.__process()
@@ -88,6 +92,42 @@ class Main():
 
         return cfg
 
+    def setup_cfg_py(self):
+        self.metadata = MetadataCatalog.get('escooter_test')
+        self.metadata.set(
+            thing_classes=["Escooter"],
+            thing_dataset_id_to_contiguous_id={1: 0},
+            thing_colors=[(255, 99, 99)]    
+        )
+
+        # To prevent repeated registering of the same dataset
+        try:
+            register_coco_instances('escooter_test', {}, self.test_dataset, '')
+        except AssertionError:
+            pass
+
+        argument_list = [
+            # '--config-file', pre_config_path, 
+            #'dataloader.train.dataset.names="escooter_train"',
+            'dataloader.test.dataset.names="escooter_test"', 
+            'dataloader.train.total_batch_size=1',
+            f'train.init_checkpoint={self.weights_path}',
+            'train.max_iter=8000',
+            #'dataloader.train.warmup_length=800',
+            'dataloader.train.num_workers=1',
+            'optimizer.lr=0.00025',
+            #'dataloader.train.num_classes=1',
+            'model.roi_heads.num_classes=1',
+            "model.backbone.bottom_up.stages.norm='BN'",
+            "model.backbone.bottom_up.stem.norm='BN'",
+            "model.backbone.norm='BN'",
+        ]
+
+        cfg = LazyConfig.load(self.pre_config_path)
+        cfg = LazyConfig.apply_overrides(cfg, argument_list)
+
+        return instantiate(cfg)
+
     def OCR(self, frame):
         pytesseract.pytesseract.tesseract_cmd = r'C:\Users\balaji\AppData\Local\Programs\Tesseract-OCR\tesseract'
 
@@ -104,13 +144,20 @@ class Main():
         return date_time
 
     def __process(self):
-        
-        for videos in os.listdir(self.input_files_path):    
+        output_file_folder = self.input_files_path + '//infered//'
+        txt_file_path = output_file_folder + 'instance.txt'
+
+        for videos in os.listdir(self.input_files_path):  
+            
             if videos[-4:] in ['.mkv', '.mp4', '.avi']:
                 
                 video_path = self.input_files_path + f'//{videos}'
-                output_file_folder = self.input_files_path + '//infered//'
                 output_video_path = output_file_folder + videos
+
+                with open(txt_file_path, 'a') as txt:
+                    text = 'Processing Video File: ' + self.input_files_path + output_video_path + '\n'
+                    txt.write(text)  
+                    
 
                 if os.path.isfile(output_video_path):
                     print(f'Skipping the video file: {videos}')
@@ -128,9 +175,13 @@ class Main():
                 isEscooterPresent_previous = False
                 isEscooterPresent_current = False
 
+                framecount = 0
                 while video_capture.isOpened():
                     _, frame = video_capture.read()
                     if _:   
+                        isEscooterPresent_previous = isEscooterPresent_current
+
+                        framecount += 1
                         output = self.predictor(frame)
                         Visualize = MyVisualizer(
                             frame[:, :, ::-1],
@@ -139,28 +190,28 @@ class Main():
                             instance_mode=ColorMode.SEGMENTATION
                         )
                         
-                        output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
-                        video_output.write(output_img)
+                        print(f'Frame: {framecount}\n, Output:{output}')
                         if len(output['instances']) >= 1:
-                            date_time = extract_date_time(frame)
+                            output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
+                            video_output.write(output_img)
                             
-                            txt_file_path = output_file_folder + 'instance.txt'
+                            isEscooterPresent_current = True
+                            date_time = extract_date_time(frame)
+                                        
                         # Simple Logic to to store the first timestamp and the last timestamp an instance appears in the frame
-                            if not isEscooterPresent_previous and not isEscooterPresent_current:
+                            if not isEscooterPresent_previous and isEscooterPresent_current:
                                 with open(txt_file_path, 'a') as txt:
                                     txt.write(date_time)
                                 isEscooterPresent_current = True
-                            elif isEscooterPresent_current and not isEscooterPresent_previous:
-                                isEscooterPresent_previous = True
-                                isEscooterPresent_current = True
 
                         else:
+                            video_output.write(frame)
+                            
                             isEscooterPresent_current = False   
                             if isEscooterPresent_previous:
                                 with open(txt_file_path, 'a') as txt:
                                     outputText = '- ' + date_time + '\n'
                                     txt.write(date_time)
-                                isEscooterPresent_previous = False
 
                     else:
                         break
@@ -189,6 +240,7 @@ def main():
     #inference = Inference_Test(model_weights_new, test_dataset_path, video_sample_1)
 
     inference = Main(pre_config, model_weights, test_dataset_path, video_samples_path, output=output_new, cfg='.yaml')
+    #inference = Main(pre_config_new, model_weights_new, test_dataset_path, video_samples_path, output=output_new, cfg='.yaml')
     
     #inference.save(output_path=inference_path, scale=0.7)
 
