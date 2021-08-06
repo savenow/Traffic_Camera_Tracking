@@ -149,7 +149,8 @@ class Main():
 
         for videos in os.listdir(self.input_files_path):  
             
-            if videos[-4:] in ['.mkv', '.mp4', '.avi']:
+            #if videos[-4:] in ['.mkv', '.mp4', '.avi']:
+            if videos == '08-06-2021_21-40.mkv':
                 
                 video_path = self.input_files_path + f'//{videos}'
                 output_video_path = output_file_folder + videos
@@ -190,10 +191,12 @@ class Main():
                             instance_mode=ColorMode.SEGMENTATION
                         )
                         
-                        print(f'Frame: {framecount}\n, Output:{output}')
-                        if len(output['instances']) >= 1:
+                        num_instances = len(output['instances'])
+                        print(f'Frame: {framecount}, number of instances: {num_instances}')
+                        if num_instances >= 1:
                             output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
                             video_output.write(output_img)
+                            print(f'Writing Frame Successfull')
                             
                             isEscooterPresent_current = True
                             date_time = extract_date_time(frame)
@@ -203,15 +206,20 @@ class Main():
                                 with open(txt_file_path, 'a') as txt:
                                     txt.write(date_time)
                                 isEscooterPresent_current = True
+                                print(f'Writing OCR Successfull - Intake')
 
                         else:
-                            video_output.write(frame)
-                            
+                            #video_output.write(frame)
+                            print('No Instances detected')
+
+                            print(f'Previous: {isEscooterPresent_previous}, Current: {isEscooterPresent_current}')
+                        
                             isEscooterPresent_current = False   
                             if isEscooterPresent_previous:
                                 with open(txt_file_path, 'a') as txt:
                                     outputText = '- ' + date_time + '\n'
                                     txt.write(date_time)
+                                    print(f'Writing OCR Successfull - Outtake')
 
                     else:
                         break

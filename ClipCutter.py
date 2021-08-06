@@ -5,11 +5,18 @@ from os import path, listdir, mkdir, system
 # recordings_path = path.abspath('/home/escooter/Videos/ffmpeg_cron/40_minutes')
 # code_path = path.abspath('/home/escooter/Videos/CodeFiles')
 # output_path = path.abspath('/home/escooter/Videos/CodeFiles/Output_clips')
+# text_file_path = path.join(code_path, 'Recordings_Linux.txt')
 
 # Windows File Paths. Uncomment while using in the windows machine.
-recordings_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Recordings')
+# recordings_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Recordings')
+# code_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\Traffic_Camera_Tracking')
+# output_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\RPC_processed\Output_clips\Test')
+
+recordings_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
 code_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\Traffic_Camera_Tracking')
-output_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\RPC_processed\Output_clips\Test')
+output_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\background_clips')
+text_file_path = path.join(output_path, 'background_clips_timestamps_2.txt')
+
 
 def findFileNumber():
     """
@@ -19,7 +26,10 @@ def findFileNumber():
     file_number = []
     for fileName in listdir(output_path):
         fileName_number, *_ = fileName.split('.')
-        file_number.append(int(fileName_number))
+        try:
+            file_number.append(int(fileName_number))
+        except ValueError:
+            file_number = None
     if not file_number:
         OUTPUT_FILE_NUMBER = 1
     else:
@@ -115,12 +125,7 @@ def read_file(path, outputFileNumber):
 
 
 def main():
-    output_file_number = findFileNumber()
-
-    # Windows File Path - Local PC
-    text_file_path = path.join(code_path, 'Recordings_Windows.txt')
-    # Linux File Path - Remote PC
-    # text_file_path = path.join(code_path, 'Recordings_Linux.txt')
+    output_file_number = 5                          #findFileNumber()   
     read_file(text_file_path, output_file_number)
 
 main()

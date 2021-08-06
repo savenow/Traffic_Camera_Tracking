@@ -83,7 +83,8 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
     main_file_path = input_path
 
     # Declaration of empty lists that is later appended it with images and annotations.
-    images_list = []
+    images_list_with_Anno = []
+    images_list_without_Anno = []
     annotations_list = []
 
     # Each image and annotations has an ID associated with it and it starts with 1.
@@ -112,6 +113,8 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
         
         return new_file_name
 
+    imgNumWithAnnotations = []
+    imgNumWithoutAnnotations = []
 
     print("- Processing the following annotation files: ")
     for clip_number, clips in enumerate(os.listdir(main_file_path)):
@@ -120,59 +123,88 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
             # Path of the clips folder
             clips_path = main_file_path + '\\' + clips
             # Path of the annotation of the clips
-            annotation_file = clips_path + f'\\{str(clips)}_Annotations.json'
-
-            file = open(annotation_file)
-            json_file = json.load(file)
-            print(f'  - {annotation_file}')
-                
             
-            # !! Testing purpose only for restricting number of annotations
-            # flag = 1
-            for annotations in json_file['annotations']:
-
-                anno_image_ID = annotations['image_id']
-                anno_ID = annotations['id']
-
-                image_filename = ''
-                for images in json_file['images']:
-                    if images['id'] == anno_image_ID:
-                        image_filename = images['file_name']
-
-                filename = input_path + '\\' + clips + '\\images\\' + image_filename
-                filename = adjustFrameDifference(filename)  
+            annotation_file = clips_path + f'\\{str(clips)}_Annotations.json'
+            
+            try:
+                file = open(annotation_file)
+                json_file = json.load(file)
+                print(f'  - {annotation_file}')
+                    
                 
-                # The formats for 'images' dictionary and 'annotations' dictionary in COCO
-                image_dict = {
-                    'id': img_num,
-                    "width": 1920,
-                    "height": 1080,
-                    "file_name": filename,
-                    "license": 0,
-                    "flickr_url": "",
-                    "coco_url": "",
-                    "date_captured": 0
-                }
-                anno_dict = {
-                    "id": anno_num,
-                    'image_id': img_num,
-                    "category_id": 1,
-                    'segmentation': annotations['segmentation'],
-                    'area': annotations['area'],
-                    'bbox': annotations['bbox'],
-                    'iscrowd': annotations['iscrowd']
-                }
+                # !! Testing purpose only for restricting number of annotations
+                # flag = 1
+                for annotations in json_file['annotations']:
 
-                # In the COCO-Format, every images and associated annotations are passed as array of dicts.
-                images_list.append(image_dict)
-                annotations_list.append(anno_dict)
+                    anno_image_ID = annotations['image_id']
+                    anno_ID = annotations['id']
 
-                # Incrementing the Image ID and Annotation ID for each loop
-                img_num += 1
-                anno_num += 1
-                
-            file.close()
+                    image_filename = ''
+                    for images in json_file['images']:
+                        if images['id'] == anno_image_ID:
+                            image_filename = images['file_name']
 
+                    filename = input_path + '\\' + clips + '\\images\\' + image_filename
+                    filename = adjustFrameDifference(filename)  
+                    
+                    # The formats for 'images' dictionary and 'annotations' dictionary in COCO
+                    image_dict = {
+                        'id': img_num,
+                        "width": 1920,
+                        "height": 1080,
+                        "file_name": filename,
+                        "license": 0,
+                        "flickr_url": "",
+                        "coco_url": "",
+                        "date_captured": 0
+                    }
+                    anno_dict = {
+                        "id": anno_num,
+                        'image_id': img_num,
+                        "category_id": 1,
+                        'segmentation': annotations['segmentation'],
+                        'area': annotations['area'],
+                        'bbox': annotations['bbox'],
+                        'iscrowd': annotations['iscrowd']
+                    }
+
+                    # In the COCO-Format, every images and associated annotations are passed as array of dicts.
+                    images_list_with_Anno.append(image_dict)
+                    annotations_list.append(anno_dict)
+
+                    #imgNumWithAnnotations.append(img_num)
+                    # Incrementing the Image ID and Annotation ID for each loop
+                    img_num += 1
+                    anno_num += 1
+                    
+                file.close()
+            
+            except FileNotFoundError:
+                print(f'Clip Number: {clip_number} does not have any annotation.json file associated with it and is being considered as background image !!')
+                images_path = clips_path + '\\images'
+                for images in os.listdir(images_path):
+                    filename = images_path + '\\' + images
+                    
+                    # The formats for 'images' dictionary and 'annotations' dictionary in COCO
+                    image_dict = {
+                        'id': img_num,
+                        "width": 1920,
+                        "height": 1080,
+                        "file_name": filename,
+                        "license": 0,
+                        "flickr_url": "",
+                        "coco_url": "",
+                        "date_captured": 0
+                    }
+
+                    # In the COCO-Format, every images and associated annotations are passed as array of dicts.
+                    images_list_without_Anno.append(image_dict)
+                    
+                    #imgNumWithoutAnnotations.append(img_num)
+                    # Incrementing the Image ID and Annotation ID for each loop
+                    img_num += 1
+                    anno_num += 1
+                    
             # !! Meant for testing purpose.
             # if clip_number == 1:
             #     break
@@ -183,39 +215,48 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
     valid_json = deepcopy(coco_format)
     test_json = deepcopy(coco_format)
 
-    train_split = 0.8
-    valid_split = 0.1
-    test_split = 0.1
+    train_split = 0.85
+    valid_split = 0.15
+    #test_split = 0.1
 
     # Function to split the whole dataset of images and annotations into train,
     # valid and test sets
-    def splitDataset(images, annotations, trainSplit, validSplit):
-        trainSize = int(len(images) * trainSplit)
+    def splitDataset(img_Anno, img_Ohne_Anno, annotations, trainSplit, validSplit):
+        
+        trainSize = int(len(img_Anno) * trainSplit)
         train_images = []
         train_annotations = []
         
-        copy_images = list(images)
-        copy_annotations = list(annotations)
-        while len(train_images) < trainSize:
-            index = random.randrange(len(copy_images))
-            train_images.append(copy_images.pop(index))
-            train_annotations.append(copy_annotations.pop(index))
+        img_Ohne_Anno = list(img_Ohne_Anno)
+        valid_images = list(img_Anno)
+        valid_annotations = list(annotations)
+        while len(train_images) < trainSize:            
+            index = random.randrange(len(valid_images))           
+            train_images.append(valid_images.pop(index))
+            train_annotations.append(valid_annotations.pop(index))
+
+            train_images.append(img_Ohne_Anno.pop(index))
         
+        valid_images.extend(img_Ohne_Anno)
 
-        copySize = int(len(copy_images) * (validSplit/(1 - trainSplit)))
-        valid_images = []
-        valid_annotations = []
+        # copySize = int(len(copy_images) * (validSplit/(1 - trainSplit)))
+        # valid_images = []
+        # valid_annotations = []
 
-        test_images = copy_images
-        test_annotations = copy_annotations
-        while len(valid_images) < copySize:
-            index = random.randrange(len(test_images))
-            valid_images.append(test_images.pop(index))
-            valid_annotations.append(test_annotations.pop(index))
+        # test_images = copy_images
+        # test_annotations = copy_annotations
+        # while len(valid_images) < copySize:
+        #     index = random.randrange(len(test_images))
+        #     valid_images.append(test_images.pop(index))
+        #     valid_annotations.append(test_annotations.pop(index))
+
         
-        return [(train_images, train_annotations), (valid_images, valid_annotations), (test_images, test_annotations)]
+        
+        # return [(train_images, train_annotations), (valid_images, valid_annotations), (test_images, test_annotations)]
+        return [(train_images, train_annotations), (valid_images, valid_annotations)]
 
-    train_set, valid_set, test_set = splitDataset(images_list, annotations_list, 0.8, 0.1)
+    #train_set, valid_set, test_set = splitDataset(images_list_with_Anno, images_list_without_Anno, annotations_list, 0.8, 0.1)
+    train_set, valid_set = splitDataset(images_list_with_Anno, images_list_without_Anno, annotations_list, 0.8, 0.1)
     print("\n- Splitting the dataset into Train, Valid and Test is successfull\n")
 
     # Storing the processed arrays of images and annotations with their
@@ -229,8 +270,8 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
     valid_json['images'] = valid_set[0]
     valid_json['annotations'] = valid_set[1]
 
-    test_json['images'] = test_set[0]
-    test_json['annotations'] = test_set[1]
+    # test_json['images'] = test_set[0]
+    # test_json['annotations'] = test_set[1]
 
     # Code Snippet to automatically create new names for the many
     # .json files created during the testing
@@ -246,7 +287,7 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
     # For train, valid and test individually
     train_file = f"{input_path}\\{base_filename[:-5]}_Train.json"
     valid_file = f"{input_path}\\{base_filename[:-5]}_Valid.json"
-    test_file = f"{input_path}\\{base_filename[:-5]}_Test.json"
+    # test_file = f"{input_path}\\{base_filename[:-5]}_Test.json"
 
     print("- Saving train, test and valid annotation files")
     with open(train_file, "w") as file:
@@ -257,14 +298,15 @@ def processAnnotations(input_path=r'C:\Vishal-Videos\Project_Escooter_Tracking\i
         json.dump(valid_json, file)
         print(f"  - Final valid set file saved as: {valid_file}")
 
-    with open(test_file, "w") as file:
-        json.dump(test_json, file)
-        print(f"  - Final test set file saved as: {test_file}")
+    # with open(test_file, "w") as file:
+    #     json.dump(test_json, file)
+    #     print(f"  - Final test set file saved as: {test_file}")
 
-    loadDataset(train_file, valid_file, test_file)
+    # loadDataset(train_file, valid_file, test_file)
+    loadDataset(train_file, valid_file)
     
 
-def loadDataset(train, valid, test):
+def loadDataset(train, valid):
     # Registers the annotation from the json files 
     try:
         register_coco_instances("escooter_train", {}, train, '')
@@ -273,11 +315,6 @@ def loadDataset(train, valid, test):
 
     try:
         register_coco_instances("escooter_valid", {}, valid, '')
-    except AssertionError:
-        pass
-        
-    try:
-        register_coco_instances("escooter_test", {}, test, '')
     except AssertionError:
         pass
 
@@ -308,43 +345,44 @@ def loadConfig(weights_output_path):
     #cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
     
     #cfg.merge_from_file(model_zoo.get_config("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
-    cfg = model_zoo.get_config_file('new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
-    cfg = LazyConfig.load(cfg)
-    overrides = [
-        'dataloader.train.dataset.names="escooter_train"', 
-        'dataloader.test.dataset.names="escooter_test"', 
+    # cfg = model_zoo.get_config_file('new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
+    # cfg = LazyConfig.load(cfg)
+    # overrides = [
+    #     'dataloader.train.dataset.names="escooter_train"', 
+    #     'dataloader.test.dataset.names="escooter_test"', 
         
-        f'train.init_checkpoint={weights_output_path + "/new_baseline_R101_FPN_Base.pkl"}',
-        f'train.output_dir="{weights_output_path}"',
-        'train.max_iter=8000',
-        'dataloader.train.warmup_length=800',
-        'dataloader.train.num_workers=1',
-        'optimizer.lr=0.00025',
-        'dataloader.train.num_classes=1',
-        'model.roi_heads.num_classes=1',
+    #     f'train.init_checkpoint={weights_output_path + "/new_baseline_R101_FPN_Base.pkl"}',
+    #     f'train.output_dir="{weights_output_path}"',
+    #     'train.max_iter=8000',
+    #     'dataloader.train.warmup_length=800',
+    #     'dataloader.train.num_workers=1',
+    #     'optimizer.lr=0.00025',
+    #     'dataloader.train.num_classes=1',
+    #     'model.roi_heads.num_classes=1',
         
-    ]
-    LazyConfig.apply_overrides(cfg, overrides)
-    #LazyConfig.save(cfg, weights_output_path + '/base_config.txt')
-    print(cfg)
-    with open(weights_output_path + '/base_config.json', 'w') as f:
-        json.dump(cfg, f)
+    # ]
+    # LazyConfig.apply_overrides(cfg, overrides)
+    # #LazyConfig.save(cfg, weights_output_path + '/base_config.txt')
+    # print(cfg)
+    # with open(weights_output_path + '/base_config.json', 'w') as f:
+    #     json.dump(cfg, f)
      
-    #cfg.merge_from_file('https://github.com/facebookresearch/detectron2/blob/master/configs/new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
-    #cfg.merge_from_file(model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
-    # model = model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py")
-    return
+    # #cfg.merge_from_file('https://github.com/facebookresearch/detectron2/blob/master/configs/new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py')
+    # #cfg.merge_from_file(model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py"))
+    # # model = model_zoo.get("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py")
+    # return
+
     cfg = get_cfg()
-    cfg.merge_from_file(weights_output_path + '/base_config.yaml')
+    cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"))
     cfg.DATASETS.TRAIN = ("escooter_train",)
-    cfg.DATASETS.TEST = ('escooter_test',)
+    cfg.DATASETS.TEST = ('escooter_valid',)
     cfg.DATALOADER.NUM_WORKERS = 0
 
     #cfg.MODEL.WEIGHTS = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Pre_Training_Model_Weights\Mask_RCNN_R_101_400ep.pkl'
-    #cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")  # Initial Model
-    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py")  # Advanced Model
+    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml")  # Initial Model
+    #cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("new_baselines/mask_rcnn_R_101_FPN_400ep_LSJ.py")  # Advanced Model
 
-    cfg.SOLVER.IMS_PER_BATCH = 1
+    cfg.SOLVER.IMS_PER_BATCH = 2
     cfg.SOLVER.BASE_LR = 0.00025  # pick a good LR
     cfg.SOLVER.WARMUP_ITERS = 800
     cfg.SOLVER.MAX_ITER = 10000   # 300 iterations seems good enough for this toy dataset; you will need to train longer for a practical dataset
@@ -354,6 +392,8 @@ def loadConfig(weights_output_path):
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1  # only has one class (escooter)
     # NOTE: this config means the number of classes, but a few popular unofficial tutorials incorrect uses num_classes+1 here.
     cfg.OUTPUT_DIR = weights_output_path
+    # Specific for adding background images
+    cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS=False
     os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
     cfg.freeze()
@@ -385,11 +425,12 @@ def main():
     train_path = abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Train.json')
     valid_path = abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\Test_1_Valid.json')
 
-    model_path = abspath(r"C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep")
+    model_path = abspath(r"C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\With_Background_Images")
 
     # We are skipping the processing annotation step as it has already been done
-    loadDataset(train=train_path, test=test_path, valid=valid_path)
+    #loadDataset(train=train_path, test=test_path, valid=valid_path)
     
+    processAnnotations()
     # Visualize some examples from the dataset
     # visualize(r'C:\Vishal-Videos\Project_Escooter_Tracking\\')
 
