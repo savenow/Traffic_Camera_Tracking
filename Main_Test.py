@@ -144,13 +144,15 @@ class Main():
         return date_time
 
     def __process(self):
-        output_file_folder = self.input_files_path + '//infered//'
+        output_file_folder = self.input_files_path + '//infered_with_background//'
+        if not os.path.exists(output_file_folder):
+            os.makedirs(output_file_folder)
         txt_file_path = output_file_folder + 'instance.txt'
 
         for videos in os.listdir(self.input_files_path):  
             
-            #if videos[-4:] in ['.mkv', '.mp4', '.avi']:
-            if videos == '08-06-2021_21-40.mkv':
+            if videos[-4:] in ['.mkv', '.mp4', '.avi']:
+            #if videos == '08-06-2021_13-40.mkv':
                 
                 video_path = self.input_files_path + f'//{videos}'
                 output_video_path = output_file_folder + videos
@@ -190,14 +192,14 @@ class Main():
                             scale=self.scale, 
                             instance_mode=ColorMode.SEGMENTATION
                         )
-                        
+                        output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
+                        video_output.write(output_img)
+                        print(f'Writing Frame Successfull')
+
                         num_instances = len(output['instances'])
                         print(f'Frame: {framecount}, number of instances: {num_instances}')
+                        
                         if num_instances >= 1:
-                            output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
-                            video_output.write(output_img)
-                            print(f'Writing Frame Successfull')
-                            
                             isEscooterPresent_current = True
                             date_time = extract_date_time(frame)
                                         
@@ -209,9 +211,7 @@ class Main():
                                 print(f'Writing OCR Successfull - Intake')
 
                         else:
-                            #video_output.write(frame)
                             print('No Instances detected')
-
                             print(f'Previous: {isEscooterPresent_previous}, Current: {isEscooterPresent_current}')
                         
                             isEscooterPresent_current = False   
@@ -227,6 +227,7 @@ class Main():
                 video_capture.release()
                 video_output.release()
                 print(f'Successfully saved the video file: {videos}')
+                #break
 
 
 def main():
@@ -239,7 +240,8 @@ def main():
     pre_config = "COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml"
 
     pre_config_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Detectron2_New\detectron2\configs\new_baselines\mask_rcnn_R_101_FPN_400ep_LSJ.py')
-    model_weights_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep\new_baseline_R101_FPN_Base.pkl')
+    #model_weights_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep\new_baseline_R101_FPN_Base.pkl')
+    model_weights_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\With_Background_Images\model_final.pth')
     output_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep')
     
     video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
@@ -247,7 +249,7 @@ def main():
     
     #inference = Inference_Test(model_weights_new, test_dataset_path, video_sample_1)
 
-    inference = Main(pre_config, model_weights, test_dataset_path, video_samples_path, output=output_new, cfg='.yaml')
+    inference = Main(pre_config, model_weights_new, test_dataset_path, video_samples_path, output=output_new, cfg='.yaml')
     #inference = Main(pre_config_new, model_weights_new, test_dataset_path, video_samples_path, output=output_new, cfg='.yaml')
     
     #inference.save(output_path=inference_path, scale=0.7)
