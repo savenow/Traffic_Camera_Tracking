@@ -1,9 +1,9 @@
 from sort import *
 import random
 import cv2
+import numpy as np
 
 color_boxes = [(255, 99, 99), (255, 120, 120), (255, 150, 150), (255, 80, 80)]
-
 
 def show_tracker_bbox_score(input, frame):
     
@@ -35,26 +35,8 @@ def show_tracker_bbox_score(input, frame):
     return img
 
 
-Object_tracker = Sort()
-# get detections
-boxes = predictions.pred_boxes.tensor.numpy() if predictions.has("pred_boxes") else None
-scores = predictions.scores if predictions.has("scores") else None
-if boxes is None:
-    track_bbs_ids = mot_tracker.update()
-else:
-    detections = process_bboxes_scores(boxes, scores)
-# detections is a np.array of the form [[x1, x2, y1, y2, score], [x1, x2, y1, y2, score], ....]
-
-# update SORT
-track_bbs_ids = mot_tracker.update(detections)
-show_tracker_bbox_score(zip(detections, scores), frame)
-
-
-
-
-
-# Predictions is the outputs of detectron2 and this manipulates data from it
-# 
-
-# classes = predictions.pred_classes.numpy() if predictions.has("pred_classes") else None
-# masks = predictions.pred_masks.tensor.numpy()
+img = np.zeros((512, 512, 3), np.uint8)
+detections = np.array([[100, 100, 200, 200, 1], [100, 200, 200, 300, 2], [100, 300, 400, 400, 3], [50, 50, 100, 300, 4]])
+scores = np.array([[0.99], [0.87], [0.8], [0.45]])
+cv2.imshow('Image', show_tracker_bbox_score(zip(detections, scores), img))
+cv2.waitKey(0)

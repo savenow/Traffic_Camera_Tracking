@@ -151,8 +151,8 @@ class Main():
 
         for videos in os.listdir(self.input_files_path):  
             
-            if videos[-4:] in ['.mkv', '.mp4', '.avi']:
-            #if videos == '08-06-2021_13-40.mkv':
+            #if videos[-4:] in ['.mkv', '.mp4', '.avi']:
+            if videos == '8_00.mp4':
                 
                 video_path = self.input_files_path + f'//{videos}'
                 output_video_path = output_file_folder + videos
@@ -186,6 +186,7 @@ class Main():
 
                         framecount += 1
                         output = self.predictor(frame)
+                        
                         Visualize = MyVisualizer(
                             frame[:, :, ::-1],
                             metadata=self.metadata, 
@@ -202,7 +203,7 @@ class Main():
                         if num_instances >= 1:
                             isEscooterPresent_current = True
                             date_time = extract_date_time(frame)
-                                        
+                            print(output)           
                         # Simple Logic to to store the first timestamp and the last timestamp an instance appears in the frame
                             if not isEscooterPresent_previous and isEscooterPresent_current:
                                 with open(txt_file_path, 'a') as txt:
