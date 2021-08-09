@@ -12,6 +12,12 @@ logger = logging.getLogger("detectron2")
 import numpy as np
 import os, json, cv2, random
 from os import path
+import json
+from copy import deepcopy
+import random
+from time import sleep
+import pytesseract
+from SORT_Tracking.sort import *
 
 # import some common detectron2 utilitie s
 from detectron2 import model_zoo
@@ -25,11 +31,8 @@ from detectron2.structures import Instances
 #from setup_cfg import setup_cfg
 from OCR import extract_date_time
 
-import json
-from copy import deepcopy
-import random
-from time import sleep
-import pytesseract
+# Meant for SORT Tracker BBOX
+color_boxes = [(255, 99, 99), (255, 120, 120), (255, 150, 150), (255, 80, 80)]
 
 # Link: https://www.programmersought.com/article/76453652970/
 
@@ -143,6 +146,49 @@ class Main():
         date_time = pytesseract.image_to_string(thresh, lang='eng', config='--psm 6')[4:-1]
         return date_time
 
+    def __preprocess_sort(self, input):
+        detection = []
+        for (bbox, score) in input:
+            bbox = bbox.tolist()
+            score = score.tolist()
+            #print(f' SORT BBOX: {bbox}, score: {score}')
+            bbox.append(score)
+            detection.append(bbox)
+            #print(f'Detection: {detection}')
+        detection = np.array(detection)
+        return detection
+    
+    def show_tracker_bbox_score(self, input, frame):
+        img = frame
+        for (detection, score) in input:
+            # For bounding box
+            print(f"Detection: {detection}, Score: {score}")
+            tracker_id = int(detection[4])
+            x1 = int(detection[0])
+            y1 = int(detection[1])
+            x2 = int(detection[2])
+            y2 = int(detection[3])
+
+            print(f"Tracker ID: {tracker_id}")
+            print(f"X1: {x1}, Y1: {y1}, X2: {x2}, Y2: {y2}")
+
+            color = (100, 100, 255)
+            img = cv2.rectangle(img, (x1, y1), (x2, y2), color, 2, cv2.LINE_AA)
+            
+            # For the text background
+            # Finds space required by the text so that we can put a background with that amount of width.
+            label = f'Track_ID: {tracker_id}, {int(score * 100)}%'
+            (w, h), _ = cv2.getTextSize(
+                    label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+
+            # Prints the text.    
+            img = cv2.rectangle(img, (x1, y1 - 20), (x1 + w, y1), color, -1)
+            text_color = (0, 0, 0)
+            img = cv2.putText(img, label, (x1, y1 - 5),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 2, lineType=cv2.LINE_AA)
+            
+        return img
+
     def __process(self):
         output_file_folder = self.input_files_path + '//infered_with_background//'
         if not os.path.exists(output_file_folder):
@@ -151,8 +197,8 @@ class Main():
 
         for videos in os.listdir(self.input_files_path):  
             
-            #if videos[-4:] in ['.mkv', '.mp4', '.avi']:
-            if videos == '8_00.mp4':
+            if videos[-4:] in ['.mkv', '.mp4', '.avi']:
+            #if videos == '8_00.mp4':
                 
                 video_path = self.input_files_path + f'//{videos}'
                 output_video_path = output_file_folder + videos
@@ -178,6 +224,9 @@ class Main():
                 isEscooterPresent_previous = False
                 isEscooterPresent_current = False
 
+                # Sort Tracker
+                Object_tracker = Sort()
+
                 framecount = 0
                 while video_capture.isOpened():
                     _, frame = video_capture.read()
@@ -186,40 +235,63 @@ class Main():
 
                         framecount += 1
                         output = self.predictor(frame)
-                        
-                        Visualize = MyVisualizer(
-                            frame[:, :, ::-1],
-                            metadata=self.metadata, 
-                            scale=self.scale, 
-                            instance_mode=ColorMode.SEGMENTATION
-                        )
-                        output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
-                        video_output.write(output_img)
-                        print(f'Writing Frame Successfull')
+                    
+                        #video_output.write(output_img)
+                        #print(f'Writing Frame Successfull')
 
                         num_instances = len(output['instances'])
-                        print(f'Frame: {framecount}, number of instances: {num_instances}')
+                        print(f'\nFrame: {framecount}, number of instances: {num_instances}')
+                        
+                        boxes = output['instances'].pred_boxes.tensor.cpu().numpy() if output['instances'].has("pred_boxes") else None
+                        scores = output['instances'].scores.cpu().detach().numpy() if output['instances'].has("scores") else None
+                        #print(f'BBOXES: \n{boxes}\nSCORES: \n{scores}')
                         
                         if num_instances >= 1:
+                            detections = self.__preprocess_sort(zip(boxes, scores))
+                            track_bbs_ids = Object_tracker.update(detections)
+                            
+                            # cv2.imshow('Image', self.show_tracker_bbox_score(zip(track_bbs_ids, scores), output_img))
+                            # cv2.waitKey(0)
+                            output_tracker = self.show_tracker_bbox_score(zip(track_bbs_ids, scores), frame)
+                            Visualize = MyVisualizer(
+                                output_tracker[:, :, ::-1],
+                                metadata=self.metadata, 
+                                scale=self.scale, 
+                                instance_mode=ColorMode.SEGMENTATION
+                            )
+                            output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
+                            video_output.write(output_img)
+                            
                             isEscooterPresent_current = True
-                            date_time = extract_date_time(frame)
-                            print(output)           
-                        # Simple Logic to to store the first timestamp and the last timestamp an instance appears in the frame
+                            date_time = extract_date_time(frame)      
+                            
+                            # Simple Logic to to store the first timestamp and the last timestamp an instance appears in the frame
                             if not isEscooterPresent_previous and isEscooterPresent_current:
                                 with open(txt_file_path, 'a') as txt:
                                     txt.write(date_time)
                                 isEscooterPresent_current = True
                                 print(f'Writing OCR Successfull - Intake')
-
+                            #break
                         else:
+                            track_bbs_ids = Object_tracker.update()
+                            Visualize = MyVisualizer(
+                                frame[:, :, ::-1],
+                                metadata=self.metadata, 
+                                scale=self.scale, 
+                                instance_mode=ColorMode.SEGMENTATION
+                            )
+                            output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
+                            video_output.write(output_img)
                             print('No Instances detected')
-                            print(f'Previous: {isEscooterPresent_previous}, Current: {isEscooterPresent_current}')
+                            
+                            # Logging for timestamps
+                            #print(f'Previous: {isEscooterPresent_previous}, Current: {isEscooterPresent_current}')
                         
                             isEscooterPresent_current = False   
                             if isEscooterPresent_previous:
                                 with open(txt_file_path, 'a') as txt:
                                     outputText = '- ' + date_time + '\n'
-                                    txt.write(date_time)
+                                    txt.write(outputText)
                                     print(f'Writing OCR Successfull - Outtake')
 
                     else:
@@ -245,7 +317,9 @@ def main():
     model_weights_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\With_Background_Images\model_final.pth')
     output_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep')
     
-    video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
+    video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode')
+    #video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\21')
+
     video_sample_1 = video_samples_path + '\\08-06-2021_08-00.mkv'
     
     #inference = Inference_Test(model_weights_new, test_dataset_path, video_sample_1)
