@@ -12,10 +12,10 @@ from os import path, listdir, mkdir, system
 # code_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\Traffic_Camera_Tracking')
 # output_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\RPC_processed\Output_clips\Test')
 
-recordings_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples')
+recordings_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode')
 code_path = path.abspath(r'C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\Traffic_Camera_Tracking')
-output_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\background_clips')
-text_file_path = path.join(output_path, 'background_clips_timestamps_2.txt')
+output_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode\To_Clip_Files')
+text_file_path = path.join(output_path, 'toclip.txt')
 
 
 def findFileNumber():
@@ -125,7 +125,7 @@ def read_file(path, outputFileNumber):
 
 
 def main():
-    output_file_number = 5                          #findFileNumber()   
+    output_file_number = 3 #findFileNumber()   
     read_file(text_file_path, output_file_number)
 
 main()

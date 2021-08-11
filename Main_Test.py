@@ -228,6 +228,10 @@ class Main():
                 Object_tracker = Sort()
 
                 framecount = 0
+                
+                # Used for finding how many continous frames the instances are detected
+                # In this script, this threshold is three for initiating SORT Algorithm
+                num_frames_present = 0
                 while video_capture.isOpened():
                     _, frame = video_capture.read()
                     if _:   
@@ -247,21 +251,35 @@ class Main():
                         #print(f'BBOXES: \n{boxes}\nSCORES: \n{scores}')
                         
                         if num_instances >= 1:
-                            detections = self.__preprocess_sort(zip(boxes, scores))
-                            track_bbs_ids = Object_tracker.update(detections)
+                            num_frames_present += 1
+                            if num_frames_present >= 3:
+                                num_frames_present = 3
                             
-                            # cv2.imshow('Image', self.show_tracker_bbox_score(zip(track_bbs_ids, scores), output_img))
-                            # cv2.waitKey(0)
-                            output_tracker = self.show_tracker_bbox_score(zip(track_bbs_ids, scores), frame)
-                            Visualize = MyVisualizer(
-                                output_tracker[:, :, ::-1],
-                                metadata=self.metadata, 
-                                scale=self.scale, 
-                                instance_mode=ColorMode.SEGMENTATION
-                            )
-                            output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
-                            video_output.write(output_img)
-                            
+                            if num_frames_present > 0: 
+                                detections = self.__preprocess_sort(zip(boxes, scores))
+                                track_bbs_ids = Object_tracker.update(detections)
+                                
+                                # cv2.imshow('Image', self.show_tracker_bbox_score(zip(track_bbs_ids, scores), output_img))
+                                # cv2.waitKey(0)
+                                output_tracker = self.show_tracker_bbox_score(zip(track_bbs_ids, scores), frame)
+                                Visualize = MyVisualizer(
+                                    output_tracker[:, :, ::-1],
+                                    metadata=self.metadata, 
+                                    scale=self.scale, 
+                                    instance_mode=ColorMode.SEGMENTATION,
+                                )
+                                output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
+                                video_output.write(output_img)
+                            else:
+                                Visualize = MyVisualizer(
+                                    frame[:, :, ::-1],
+                                    metadata=self.metadata, 
+                                    scale=self.scale, 
+                                    instance_mode=ColorMode.SEGMENTATION
+                                )
+                                output_img = Visualize.draw_instance_predictions(output["instances"].to("cpu")).get_image()[:, :, ::-1]
+                                video_output.write(output_img)
+
                             isEscooterPresent_current = True
                             date_time = extract_date_time(frame)      
                             
@@ -273,6 +291,7 @@ class Main():
                                 print(f'Writing OCR Successfull - Intake')
                             #break
                         else:
+                            num_frames_present = 0
                             track_bbs_ids = Object_tracker.update()
                             Visualize = MyVisualizer(
                                 frame[:, :, ::-1],
@@ -317,8 +336,8 @@ def main():
     model_weights_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\With_Background_Images\model_final.pth')
     output_new = path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\Notebooks\Model_Weights_Loop_Test\new-baseline-400ep')
     
-    video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode')
-    #video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\21')
+    #video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode')
+    video_samples_path = path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input\41')
 
     video_sample_1 = video_samples_path + '\\08-06-2021_08-00.mkv'
     
