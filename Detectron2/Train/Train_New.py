@@ -389,9 +389,9 @@ def loadConfig(weights_output_path):
 
     cfg.SOLVER.IMS_PER_BATCH = 1
     cfg.SOLVER.BASE_LR = 0.00025  # pick a good LR
-    cfg.SOLVER.WARMUP_ITERS = 1500
-    cfg.SOLVER.MAX_ITER = 40000   # 300 iterations seems good enough for this toy dataset; you will need to train longer for a practical dataset
-    cfg.SOLVER.STEPS = (18000, 35000)
+    cfg.SOLVER.WARMUP_ITERS = 800
+    cfg.SOLVER.MAX_ITER = 6000   # 300 iterations seems good enough for this toy dataset; you will need to train longer for a practical dataset
+    cfg.SOLVER.STEPS = (4000, 5500)
     cfg.SOLVER.GAMMA = 0.05
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512   # faster, and good enough for this toy dataset (default: 512)
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 3  # only has one class (escooter)
