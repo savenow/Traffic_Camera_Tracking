@@ -301,9 +301,49 @@ def create_Objs(yolo_data_folder, class_dict):
         f.write(f'names = {obj_names_path}\n')
         f.write(f'backup = backup/')
 
+def convert_coco_bbox_to_yolo(bbox, im_width, im_height):
+    """
+    Function for converting COCO format BBOX to Yolo format
+
+    COCO Format: x1, y1, width, height              
+    => where x1, y1 represents the top left corner of bbox
+
+    YOLO Format: x1, y1, total_width, total_height  
+    => where x1, y1 represent the center of the bbox
+    => All variables are scaled according to the resolution. So their values can only be between 0 and 1
+    """
+
+    center_x = ((2 * bbox[0]) + bbox[2])/ (2 * im_width)
+    center_y = ((2 * bbox[1]) + bbox[3])/ (2 * im_height)
+    total_width = bbox[2] / im_width
+    total_height = bbox[3] / im_height
+
+    return (center_x, center_y, total_width, total_height)
+
+def adjustFrameDifference(file_name, offset=1):
+        # Adjusting for difference in frame
+        file_name_from_dict = file_name.split('.')[0]
+        file_number = int(file_name_from_dict[-6:])
+        
+        # 1 is the offset number for the frame difference between the annotations 
+        # from CVAT and frames extracted from the FFMPEG Script
+        file_number += 1
+        
+        # Adding the write number of 0's and taking care of proper filename
+        if int(file_number / 10) == 0:
+            new_file_name = file_name_from_dict[:-6] + '00000' + str(file_number) + '.png'
+        elif int(file_number / 100) == 0:
+            new_file_name = file_name_from_dict[:-6] + '0000' + str(file_number) + '.png'
+        elif int(file_number / 1000) == 0:
+            new_file_name = file_name_from_dict[:-6] + '000' + str(file_number) + '.png'
+        elif int(file_number / 10000) == 0:
+            new_file_name = file_name_from_dict[:-6] + '00' + str(file_number) + '.png'
+        
+        return new_file_name
+    
 
 def main():
-    main_path = os.path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new')
+    main_path = os.path.abspath(r'C:\Users\balaji\Desktop\Yolo')
     init_json_path = os.path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\COCO2YOLO\Test_JSONS\Test_1_Valid.json')
     
     main_dict = json.load(open(init_json_path))
@@ -338,10 +378,56 @@ def main():
     #             break
     #     break
 
-    # Creating and Opening train.txt file
+    # Creating train.txt, valid.txt and data directory
+    # This deletes any pre-existing files and creating new ones.
     train = open(f'{yolo_folder}\\train.txt', 'w+')
     valid = open(f'{yolo_folder}\\valid.txt', 'w+')
+    data_directory = f'{yolo_folder}\\data'
+    if os.path.exists(data_directory):
+        shutil.rmtree(data_directory)
+    os.makedirs(data_directory)
 
     print(main_dict.keys())
 
-main()
+    img_count = 0
+    for image in main_dict['images']:
+        # Copying and renaming the files
+        shutil.copy2(image['file_name'], data_directory)
+        new_img_name = f'frame_{img_count}.png'
+        os.rename(f"{data_directory}\\{image['file_name'][-16:]}", f"{data_directory}\\{new_img_name}")
+        valid.write(f'{data_directory}\\{new_img_name}\n')
+
+        frame_txt = open(f'{data_directory}\\frame_{img_count}.txt', 'w+')
+        anno_string = ''
+        for anno in main_dict['annotations']:
+            if image['id'] == anno['image_id']:
+                #print(f'Annotations: {anno}\nImage: {image}')
+                yolo_bbox = convert_coco_bbox_to_yolo(anno['bbox'], image['width'], image['height'])
+                anno_string += f"{anno['category_id'] - 1} {yolo_bbox[0]} {yolo_bbox[1]} {yolo_bbox[2]} {yolo_bbox[3]}\n"
+        if anno_string != '':
+            frame_txt.write(anno_string[:-1])
+        img_count += 1
+        frame_txt.close()
+
+    train.close()
+    valid.close()
+        
+def check():
+    main_path = os.path.abspath(r'C:\Users\balaji\Desktop\Yolo')
+    init_json_path = os.path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\COCO2YOLO\Test_JSONS\42.json')
+    
+    main_dict = json.load(open(init_json_path))
+    for image in main_dict['images']:
+        count = 0
+        list_anno = []
+        for anno in main_dict['annotations']:
+            if image['id'] == anno['image_id']:
+                count += 1
+                list_anno.append(anno)
+        #print(f"Filename: {image['file_name']}, Count of Annotations: {count}")
+        if count == 2:
+            print(list_anno)
+            break
+
+#main()
+check()
