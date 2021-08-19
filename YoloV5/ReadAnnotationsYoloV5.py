@@ -3,31 +3,19 @@ import json
 import os
 import shutil
 
-def create_Objs(yolo_data_folder, class_dict):
-    num_class = 0
-
-    # Creating Obj.names file
-    obj_names_path = yolo_data_folder + f'\\obj.names'
-    if os.path.exists(obj_names_path):
-        os.remove(obj_names_path)
-    class_str = ''
-    with open(obj_names_path, 'a') as f:
-        for items in class_dict:
-            class_str += items['name'] + '\n'
-            num_class += 1
-        f.write(class_str[:-1])
-            
+def create_base_yaml(yolo_data_folder, classes_present):
+    num_class = len(classes_present)
     
-    # Creating Obj.data file
-    obj_data_path = yolo_data_folder + f'\\obj.data'
+    # Creating base.yaml file
+    obj_data_path = yolo_data_folder + f'\\base.yaml'
     if os.path.exists(obj_data_path):
         os.remove(obj_data_path)
-    with open(obj_data_path, 'a') as f:
-        f.write(f'classes = {num_class}\n')
-        f.write(f'train = {yolo_data_folder}\\train.txt\n')
-        f.write(f'valid = {yolo_data_folder}\\valid.txt\n')
-        f.write(f'names = {obj_names_path}\n')
-        f.write(f'backup = backup/')
+    with open(obj_data_path, 'w+') as f:
+        f.write(f'path: {yolo_data_folder}\n')
+        f.write('train: images/train\n')
+        f.write('val: images/valid\n')
+        f.write(f'nc: {num_class}\n')
+        f.write(f'names: {classes_present}')
 
 def convert_coco_bbox_to_yolo(bbox, im_width, im_height):
     """
@@ -75,22 +63,44 @@ def adjustFrameDifference(file_name, offset=1):
         
         return new_file_name
 
+def copy_images_labels(data, img_dir, label_dir):
+    for item in data:
+        shutil.copy2(item[1], img_dir)
+        new_img_name = f'frame_{item[0]}.png'
+        os.rename(f"{img_dir}\\{item[1][-16:]}", f"{img_dir}\\{new_img_name}")
+
+        label = f'{label_dir}\\frame_{item[0]}.txt'
+        with open(label, 'w+') as file:
+            file.writelines(item[2])
+
+
 def main(main_path, files_path, train_split):
     # Creating Yolo Folder (train.txt, valid.txt and data directory)
     # This deletes any pre-existing files and creating new ones.
 
     yolo_folder = f'{main_path}\Yolo_data'
+    if os.path.exists(yolo_folder):
+        shutil.rmtree(yolo_folder)
     os.makedirs(yolo_folder, exist_ok=True)
 
-    train = open(f'{yolo_folder}\\train.txt', 'w+')
-    valid = open(f'{yolo_folder}\\valid.txt', 'w+')
+    #train = open(f'{yolo_folder}\\train.txt', 'w+')
+    #valid = open(f'{yolo_folder}\\valid.txt', 'w+')
     
-    data_directory = f'{yolo_folder}\\data'
-    if os.path.exists(data_directory):
-        shutil.rmtree(data_directory)
-    os.makedirs(data_directory)
+    img_directory = f'{yolo_folder}\\images'
+    train_img_directory = f'{img_directory}\\train'
+    valid_img_directory = f'{img_directory}\\valid'
 
-    # Variable used to check that obj.names and obj.data files are created once
+    labels_directory = f'{yolo_folder}\\labels'
+    train_label_directory = f'{labels_directory}\\train'
+    valid_label_directory = f'{labels_directory}\\valid'
+    
+    os.makedirs(train_img_directory)
+    os.makedirs(valid_img_directory)
+    os.makedirs(labels_directory)
+    os.makedirs(train_label_directory)
+    os.makedirs(valid_label_directory)
+
+    # Variable used to check whether the base.yaml file has been created
     is_base_files_created = False
     # Frame Number which increments for every frame read and copied
     frame_number = 0
@@ -103,7 +113,9 @@ def main(main_path, files_path, train_split):
     total_pedestrian_instances = 0
     total_cyclist_instances = 0
 
-    all_images = []
+    # A List containing tuple of the format: (frame number, path of the image, annotation in yolo format)
+    # This is stored in this format to later split train-validation and copy files as necessary
+    data_list = []
     for files in os.listdir(files_path):
         # Looping through each folder and getting the annotations
         clip_folder = files_path + '\\' + files
@@ -118,9 +130,8 @@ def main(main_path, files_path, train_split):
                 # Creating a custom dictionary for keeping track of id's and the associated (label name) name for writing in the obj's files
                 classes = []
                 for items in annotation_dict['categories']:
-                    new_class = {'id': items['id'], 'name': items['name']}
-                    classes.append(new_class)
-                create_Objs(yolo_folder, classes)
+                    classes.append(items['name'])
+                create_base_yaml(yolo_folder, classes)
 
                 is_base_files_created = True
 
@@ -134,13 +145,13 @@ def main(main_path, files_path, train_split):
                 frame_adjusted_img_filename = adjustFrameDifference(abs_img_path)
 
                 # Copying and renaming the files
-                shutil.copy2(frame_adjusted_img_filename, data_directory)
-                new_img_name = f'frame_{frame_number}.png'
-                os.rename(f"{data_directory}\\{frame_adjusted_img_filename[-16:]}", f"{data_directory}\\{new_img_name}")
-                #valid.write(f'{data_directory}\\{new_img_name}\n')
-                all_images.append(f'{data_directory}\\{new_img_name}\n')
+                # shutil.copy2(frame_adjusted_img_filename, data_directory)
+                # new_img_name = f'frame_{frame_number}.png'
+                # os.rename(f"{data_directory}\\{frame_adjusted_img_filename[-16:]}", f"{data_directory}\\{new_img_name}")
+                # #valid.write(f'{data_directory}\\{new_img_name}\n')
+                # all_images.append(f'{data_directory}\\{new_img_name}\n')
 
-                frame_txt = open(f'{data_directory}\\frame_{frame_number}.txt', 'w+')
+                # frame_txt = open(f'{data_directory}\\frame_{frame_number}.txt', 'w+')
                 anno_string = ''
                 
                 for anno in annotation_dict['annotations']:
@@ -156,11 +167,14 @@ def main(main_path, files_path, train_split):
                             cyclist_instances += 1
                 
                 total_images += 1
-        
+
                 if anno_string != '':
-                    frame_txt.write(anno_string[:-1])
+                    data_list.append((frame_number, frame_adjusted_img_filename, anno_string))
+
+                # if anno_string != '':
+                #     frame_txt.write(anno_string[:-1])
                 frame_number += 1
-                frame_txt.close()
+                # frame_txt.close()
             
             clip_instances = escooter_instances + pedestrian_instances + cyclist_instances
             total_instances += clip_instances
@@ -181,18 +195,16 @@ def main(main_path, files_path, train_split):
     print(f"Total Pedestrian Instances: {total_pedestrian_instances}")
     print(f"Total Cyclist Instances: {total_cyclist_instances}")
     
-    random.shuffle(all_images)
-    train_data = all_images[:int((len(all_images)+1)*train_split)]
-    validation_data = all_images[int((len(all_images)+1)*train_split):]
+    random.shuffle(data_list)
+    train_data = data_list[:int((len(data_list)+1)*train_split)]
+    validation_data = data_list[int((len(data_list)+1)*train_split):]
 
-    train.writelines(train_data)
-    valid.writelines(validation_data)
-
-    train.close()
-    valid.close()
+    copy_images_labels(train_data, train_img_directory, train_label_directory)
+    copy_images_labels(validation_data, valid_img_directory, valid_label_directory)
 
 output_path = os.path.abspath(r'C:\Users\balaji\Desktop\Yolo')
 clips_path = os.path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new')
 train_valid_split = 0.85    # 85% is in train and 15% is in validation
 
 main(output_path, clips_path, train_valid_split)
+#create_base_yaml(output_path, ['Balls', 'Bats'])
