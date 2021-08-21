@@ -1,3 +1,7 @@
+"""
+Simple Script to clean annotation file stored in the input data directory while testing with Yolo Annotation Format.
+Can be reused in the project in the future to delete files of certain format from a directory.
+"""
 import os
 
 main_path = os.path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new')
