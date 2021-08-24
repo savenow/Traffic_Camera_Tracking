@@ -1,0 +1,16 @@
+
+WARNING: Dataset not found, nonexistent paths: ['C:\\Users\\balaji\\Desktop\\Traffic_Camera_Tracking\\Main_Code\\Yolo_data\\images\\data']
+Traceback (most recent call last):
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\train.py", line 602, in <module>
+    main(opt)
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\train.py", line 500, in main
+    train(opt.hyp, opt, device)
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\train.py", line 84, in train
+    loggers = Loggers(save_dir, weights, opt, hyp, LOGGER)  # loggers instance
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\utils\loggers\__init__.py", line 62, in __init__
+    self.wandb = WandbLogger(self.opt, run_id)
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\utils\loggers\wandb\wandb_utils.py", line 159, in __init__
+    self.data_dict = check_dataset(opt.data)
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\utils\general.py", line 296, in check_dataset
+    raise Exception('Dataset not found.')
+Exception: Dataset not found.

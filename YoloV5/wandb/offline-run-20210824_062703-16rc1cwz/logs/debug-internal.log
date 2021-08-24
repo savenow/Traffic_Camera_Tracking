@@ -1,0 +1,24 @@
+2021-08-24 06:27:04,237 INFO    MainThread:14524 [internal.py:wandb_internal():86] W&B internal server running at pid: 14524, started at: 2021-08-24 06:27:04.237284
+2021-08-24 06:27:04,237 INFO    WriterThread:14524 [datastore.py:open_for_write():77] open: C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\wandb\offline-run-20210824_062703-16rc1cwz\run-16rc1cwz.wandb
+2021-08-24 06:27:04,237 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: run_start
+2021-08-24 06:27:04,261 DEBUG   HandlerThread:14524 [meta.py:__init__():39] meta init
+2021-08-24 06:27:04,261 DEBUG   HandlerThread:14524 [meta.py:__init__():53] meta init done
+2021-08-24 06:27:04,261 DEBUG   HandlerThread:14524 [meta.py:probe():210] probe
+2021-08-24 06:27:04,277 DEBUG   HandlerThread:14524 [meta.py:_setup_git():200] setup git
+2021-08-24 06:27:04,364 DEBUG   HandlerThread:14524 [meta.py:_setup_git():207] setup git done
+2021-08-24 06:27:04,364 DEBUG   HandlerThread:14524 [meta.py:_save_pip():57] save pip
+2021-08-24 06:27:04,365 DEBUG   HandlerThread:14524 [meta.py:_save_pip():71] save pip done
+2021-08-24 06:27:04,365 DEBUG   HandlerThread:14524 [meta.py:_save_conda():78] save conda
+2021-08-24 06:27:04,368 ERROR   HandlerThread:14524 [meta.py:_save_conda():85] Error saving conda packages
+Traceback (most recent call last):
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\site-packages\wandb\sdk\internal\meta.py", line 83, in _save_conda
+    subprocess.call(["conda", "env", "export"], stdout=f)
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\subprocess.py", line 349, in call
+    with Popen(*popenargs, **kwargs) as p:
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\subprocess.py", line 951, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\subprocess.py", line 1420, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+FileNotFoundError: [WinError 2] Das System kann die angegebene Datei nicht finden
+2021-08-24 06:27:04,369 DEBUG   HandlerThread:14524 [meta.py:_save_conda():86] save conda done
+2021-08-24 06:27:04,370 DEBUG   HandlerThread:14524 [meta.py:probe():252] probe done
