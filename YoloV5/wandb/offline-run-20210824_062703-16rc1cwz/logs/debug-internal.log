@@ -22,3 +22,72 @@ Traceback (most recent call last):
 FileNotFoundError: [WinError 2] Das System kann die angegebene Datei nicht finden
 2021-08-24 06:27:04,369 DEBUG   HandlerThread:14524 [meta.py:_save_conda():86] save conda done
 2021-08-24 06:27:04,370 DEBUG   HandlerThread:14524 [meta.py:probe():252] probe done
+2021-08-24 12:43:29,341 WARNING MainThread:14524 [internal.py:wandb_internal():145] Internal process interrupt: 1
+2021-08-24 12:43:30,075 DEBUG   SenderThread:14524 [sender.py:send():182] send: exit
+2021-08-24 12:43:30,075 INFO    SenderThread:14524 [sender.py:send_exit():291] handling exit code: 255
+2021-08-24 12:43:30,075 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: poll_exit
+2021-08-24 12:43:30,075 INFO    SenderThread:14524 [sender.py:send_exit():293] handling runtime: 22585
+2021-08-24 12:43:30,075 INFO    SenderThread:14524 [sender.py:_save_file():873] saving file wandb-summary.json with policy end
+2021-08-24 12:43:30,075 INFO    SenderThread:14524 [sender.py:send_exit():303] send defer
+2021-08-24 12:43:30,075 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: poll_exit
+2021-08-24 12:43:30,075 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,075 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 0
+2021-08-24 12:43:30,075 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,075 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 0
+2021-08-24 12:43:30,075 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 1
+2021-08-24 12:43:30,075 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,075 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 1
+2021-08-24 12:43:30,200 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,200 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: poll_exit
+2021-08-24 12:43:30,200 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 1
+2021-08-24 12:43:30,200 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 2
+2021-08-24 12:43:30,200 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: poll_exit
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 2
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 2
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 3
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 3
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 3
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 4
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 4
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 4
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 5
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 5
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 5
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 6
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 6
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 6
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 7
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 7
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 7
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 8
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 8
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 8
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:transition_state():316] send defer: 9
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send():182] send: final
+2021-08-24 12:43:30,216 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: defer
+2021-08-24 12:43:30,216 INFO    HandlerThread:14524 [handler.py:handle_request_defer():145] handle defer: 9
+2021-08-24 12:43:30,216 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: defer
+2021-08-24 12:43:30,216 INFO    SenderThread:14524 [sender.py:send_request_defer():312] handle sender defer: 9
+2021-08-24 12:43:30,325 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: poll_exit
+2021-08-24 12:43:30,325 DEBUG   SenderThread:14524 [sender.py:send_request():196] send_request: poll_exit
+2021-08-24 12:43:30,325 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: get_summary
+2021-08-24 12:43:30,325 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: sampled_history
+2021-08-24 12:43:30,325 DEBUG   HandlerThread:14524 [handler.py:handle_request():128] handle_request: shutdown
+2021-08-24 12:43:30,325 INFO    HandlerThread:14524 [handler.py:finish():677] shutting down handler
+2021-08-24 12:43:31,228 INFO    WriterThread:14524 [datastore.py:close():281] close: C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\wandb\offline-run-20210824_062703-16rc1cwz\run-16rc1cwz.wandb
+2021-08-24 12:43:31,337 INFO    SenderThread:14524 [sender.py:finish():979] shutting down sender
+2021-08-24 12:43:31,337 INFO    MainThread:14524 [internal.py:handle_exit():76] Internal process exited

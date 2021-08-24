@@ -28,4 +28,4 @@ def plot_results(file='path/to/results.csv', dir=''):
     ax[1].legend()
     fig.savefig(save_dir / 'results.png', dpi=200)
     
-plot_results(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\runs\train\exp15\results.csv', dir=r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\yolo_save_weights\results') 
+plot_results(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\runs\train\exp2\results.csv')

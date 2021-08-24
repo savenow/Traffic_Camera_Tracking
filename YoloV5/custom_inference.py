@@ -2,6 +2,7 @@ import torch
 import time
 import cv2
 from yolo_v5_main_files.utils.torch_utils import time_sync
+import os
 
 def video_inference(input_path, output_path, model_weights):
     video_capture = cv2.VideoCapture(input_path)
@@ -68,7 +69,7 @@ def video_inference(input_path, output_path, model_weights):
 
 # Model
 # model = torch.hub.load(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files', 'custom', path=r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\runs\train\exp10\weights\best.pt', source='local')  # or yolov5m, yolov5l, yolov5x, custom
-model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\runs\train\exp10\weights\best.pt'
+model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\yolo_save_weights\transfer_learning_epoch_11.pt'
 # Images
 # img = r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new\31\images\frame_000154.png'  # or file, Path, PIL, OpenCV, numpy, list
 
@@ -81,6 +82,17 @@ model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traff
 # cv2.imshow('Windows', img_output[..., ::-1].copy())
 # cv2.waitKey(0)
 
-input = r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\08-06-2021_10-40.mkv'
-output = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo\08-06-2021_10-40.mkv'
-video_inference(input, output, model_weight)
+input_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Test_Samples'
+output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\Initial_Transfer_learning'
+for files in os.listdir(input_directory):
+    if files[-3:] in ['mkv', 'avi', 'mp4', 'mov']:
+        input_location = input_directory + f'\{files}'
+        output_location = output_directory + f'\{files}'
+
+        video_inference(input_location, output_location, model_weight)
+
+
+
+#input = r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new\18\18.mp4'
+#output = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo\Transfer Learning\18.mkv'
+#video_inference(input, output, model_weight)
