@@ -25,15 +25,10 @@ def findFileNumber():
     """
     file_number = []
     for fileName in listdir(output_path):
-        fileName_number, *_ = fileName.split('.')
-        try:
-            file_number.append(int(fileName_number))
-        except ValueError:
-            file_number = None
-    if not file_number:
-        OUTPUT_FILE_NUMBER = 1
-    else:
-        OUTPUT_FILE_NUMBER = max(file_number) + 1
+        if path.isdir(output_path + '/' + fileName):
+            file_number.append(int(fileName))
+        
+    OUTPUT_FILE_NUMBER = max(file_number) + 1
     return OUTPUT_FILE_NUMBER
 
 def createFrames(file_name, start_time, end_time, outputNumber):
@@ -62,10 +57,6 @@ def createFrames(file_name, start_time, end_time, outputNumber):
     ffmpeg_command_2 = 'ffmpeg -i ' + str(video_file_path) + ' -ss 00:' + start_time[0] + ':' + start_time[1] \
                        + ' -t 00:' + end_time[0] + ':' + end_time[1] + ' ' + output_directory_images + '\\frame_%06d.png'
     """
-
-
-    # """ffmpeg -i C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\RPC_processed\Output_clips\2.mp4
-    # -qscale:v 6 C:\Users\visha\Desktop\Carissma\TrafficMonitoring\Main_Code\RPC_processed\Output_clips\2\frame_%06d.png"""
 
     ffmpeg_command = 'ffmpeg -i ' + str(video_file_path) + ' ' + output_directory_images + '\\frame_%06d.png'
     print(ffmpeg_command)
@@ -125,7 +116,7 @@ def read_file(path, outputFileNumber):
 
 
 def main():
-    output_file_number = 3 #findFileNumber()   
+    output_file_number = findFileNumber()   
     read_file(text_file_path, output_file_number)
 
 main()
