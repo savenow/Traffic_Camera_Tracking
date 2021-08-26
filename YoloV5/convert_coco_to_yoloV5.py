@@ -283,7 +283,7 @@ def main(main_path, files_path, train_split):
 
 # These paths must be definitely changed according to your own system
 # I (prefer) recommend using absolute paths to avoid confusions
-output_path = os.path.abspath(r'C:\Users\balaji\Desktop\Yolo')
+output_path = os.path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code')
 clips_path = os.path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new')
 train_valid_split = 0.85    # 85% is in train and 15% is in validation
 

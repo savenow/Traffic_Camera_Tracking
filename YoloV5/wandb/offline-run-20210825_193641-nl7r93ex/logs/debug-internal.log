@@ -1,0 +1,31 @@
+2021-08-25 19:36:42,831 INFO    MainThread:13116 [internal.py:wandb_internal():86] W&B internal server running at pid: 13116, started at: 2021-08-25 19:36:42.826475
+2021-08-25 19:36:42,837 INFO    WriterThread:13116 [datastore.py:open_for_write():77] open: C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\wandb\offline-run-20210825_193641-nl7r93ex\run-nl7r93ex.wandb
+2021-08-25 19:36:42,840 DEBUG   HandlerThread:13116 [handler.py:handle_request():128] handle_request: run_start
+2021-08-25 19:36:42,864 DEBUG   HandlerThread:13116 [meta.py:__init__():39] meta init
+2021-08-25 19:36:42,864 DEBUG   HandlerThread:13116 [meta.py:__init__():53] meta init done
+2021-08-25 19:36:42,864 DEBUG   HandlerThread:13116 [meta.py:probe():210] probe
+2021-08-25 19:36:42,879 DEBUG   HandlerThread:13116 [meta.py:_setup_git():200] setup git
+2021-08-25 19:36:42,974 DEBUG   HandlerThread:13116 [meta.py:_setup_git():207] setup git done
+2021-08-25 19:36:42,974 DEBUG   HandlerThread:13116 [meta.py:_save_pip():57] save pip
+2021-08-25 19:36:42,974 DEBUG   HandlerThread:13116 [meta.py:_save_pip():71] save pip done
+2021-08-25 19:36:42,974 DEBUG   HandlerThread:13116 [meta.py:_save_conda():78] save conda
+2021-08-25 19:36:42,974 ERROR   HandlerThread:13116 [meta.py:_save_conda():85] Error saving conda packages
+Traceback (most recent call last):
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\site-packages\wandb\sdk\internal\meta.py", line 83, in _save_conda
+    subprocess.call(["conda", "env", "export"], stdout=f)
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\subprocess.py", line 349, in call
+    with Popen(*popenargs, **kwargs) as p:
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\subprocess.py", line 951, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+  File "C:\Users\balaji\Desktop\Traffic_Camera_Tracking\lib\subprocess.py", line 1420, in _execute_child
+    hp, ht, pid, tid = _winapi.CreateProcess(executable, args,
+FileNotFoundError: [WinError 2] Das System kann die angegebene Datei nicht finden
+2021-08-25 19:36:42,994 DEBUG   HandlerThread:13116 [meta.py:_save_conda():86] save conda done
+2021-08-25 19:36:42,994 DEBUG   HandlerThread:13116 [meta.py:probe():252] probe done
+2021-08-25 19:37:15,138 WARNING MainThread:13116 [internal.py:wandb_internal():145] Internal process interrupt: 1
+2021-08-25 19:40:06,605 WARNING MainThread:13116 [internal.py:wandb_internal():145] Internal process interrupt: 2
+2021-08-25 19:40:06,605 ERROR   MainThread:13116 [internal.py:wandb_internal():148] Internal process interrupted.
+2021-08-25 19:40:06,884 INFO    WriterThread:13116 [datastore.py:close():281] close: C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\wandb\offline-run-20210825_193641-nl7r93ex\run-nl7r93ex.wandb
+2021-08-25 19:40:06,884 INFO    HandlerThread:13116 [handler.py:finish():677] shutting down handler
+2021-08-25 19:40:07,117 INFO    SenderThread:13116 [sender.py:finish():979] shutting down sender
+2021-08-25 19:40:07,117 INFO    MainThread:13116 [internal.py:handle_exit():76] Internal process exited

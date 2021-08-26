@@ -1,0 +1,37 @@
+{
+    "os": "Windows-10-10.0.17763-SP0",
+    "python": "3.9.5",
+    "heartbeatAt": "2021-08-25T17:36:42.864917",
+    "startedAt": "2021-08-25T17:36:41.846053",
+    "docker": null,
+    "gpu": "Quadro RTX 4000",
+    "gpu_count": 1,
+    "cpu_count": 96,
+    "cuda": null,
+    "args": [
+        "--img",
+        "1280",
+        "--batch",
+        "8",
+        "--epochs",
+        "30",
+        "--data",
+        "train_config.yaml",
+        "--weights",
+        "yolov5l6.pt",
+        "--freeze",
+        "10"
+    ],
+    "state": "running",
+    "program": "C:\\Users\\balaji\\Desktop\\Traffic_Camera_Tracking\\Main_Code\\Traffic_Camera_Tracking\\YoloV5\\yolo_v5_main_files\\train.py",
+    "codePath": "YoloV5\\yolo_v5_main_files\\train.py",
+    "git": {
+        "remote": "git@github.com:savenow/Traffic_Camera_Tracking.git",
+        "commit": "4f48064b19dac4c2a5587e08e3a70f2a1c473c14"
+    },
+    "email": null,
+    "root": "C:/Users/balaji/Desktop/Traffic_Camera_Tracking/Main_Code/Traffic_Camera_Tracking",
+    "host": "PCCZC022CRM1",
+    "username": "balaji",
+    "executable": "C:\\Users\\balaji\\Desktop\\Traffic_Camera_Tracking\\python.exe"
+}
