@@ -62,8 +62,8 @@ def video_inference(input_path, output_path, model_weights):
             # avg_video_write_fps += video_write_fps
 
             # print(f'Processed Frame: {framecount} => Inference Time: ({inference_time:.3f}s) ({inference_fps:.3f} fps); Video File write time: ({video_write_time:.3f}s) ({video_write_fps:.3f} fps)')
-            pbar.update(i)
-            framecount += 1
+            pbar.update(framecount)
+            #framecount += 1
         else:
             break
     
@@ -83,6 +83,7 @@ def video_inference(input_path, output_path, model_weights):
 # Model
 # model = torch.hub.load(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files', 'custom', path=r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\runs\train\exp10\weights\best.pt', source='local')  # or yolov5m, yolov5l, yolov5x, custom
 model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\yolo_save_weights\tl_extended_epoch_30.pt'
+model_weight_5x6 = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\yolov5x6.pt'
 # Images
 # img = r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new\31\images\frame_000154.png'  # or file, Path, PIL, OpenCV, numpy, list
 
@@ -95,8 +96,8 @@ model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\yolo_
 # cv2.imshow('Windows', img_output[..., ::-1].copy())
 # cv2.waitKey(0)
 
-input_directory = r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode\08-06-2021_18-00.mkv'
-output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\08-06-2021_18-00.mkv'
+input_directory = r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode\08-06-2021_16-40.mkv'
+output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\Extended_Transfer_Learning\08-06-2021_16-40.mkv'
 # for files in os.listdir(input_directory):
 #     if files[-3:] in ['mkv', 'avi', 'mp4', 'mov']:
 #         input_location = input_directory + f'\{files}'
