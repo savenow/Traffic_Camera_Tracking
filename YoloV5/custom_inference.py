@@ -3,13 +3,24 @@ import time
 import cv2
 from yolo_v5_main_files.utils.torch_utils import time_sync
 import os
+from tqdm import tqdm
+
+class TqdmExtraFormat(tqdm):
+    """Provides a `total_time` format parameter"""
+    @property
+    def format_dict(self):
+        d = super(TqdmExtraFormat, self).format_dict
+        total_time = d["elapsed"] * (d["total"] or 0) / max(d["n"], 1)
+        d.update(total_time=self.format_interval(total_time) + " in total")
+        return d
+
 
 def video_inference(input_path, output_path, model_weights):
     video_capture = cv2.VideoCapture(input_path)
     width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = int(video_capture.get(cv2.CAP_PROP_FPS))
-    total_frames = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
+    total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
     video_duration = total_frames / fps
     codec = 'mp4v'
 
@@ -21,48 +32,50 @@ def video_inference(input_path, output_path, model_weights):
         source='local'
     ) 
 
-    avg_inference = 0
-    avg_inference_fps = 0
+    # avg_inference = 0
+    # avg_inference_fps = 0
 
-    avg_video_write = 0
-    avg_video_write_fps = 0
+    # avg_video_write = 0
+    # avg_video_write_fps = 0
     framecount = 1
-    t0 = time_sync()
+    #t0 = time_sync()
+
+    pbar = TqdmExtraFormat(total = total_frames, desc='Inference Progress: ')
     while video_capture.isOpened():
         _, frame = video_capture.read()
 
         if _:
-            t1 = time_sync()
+            #t1 = time_sync()
             results = model(frame)
-            t2 = time_sync()
-            inference_time = t2 - t1
-            inference_fps  = 1/inference_time
-            avg_inference += inference_time
-            avg_inference_fps += inference_fps
+            #t2 = time_sync()
+            # inference_time = t2 - t1
+            # inference_fps  = 1/inference_time
+            # avg_inference += inference_time
+            # avg_inference_fps += inference_fps
 
-            t3 = time_sync()
+            # t3 = time_sync()
             video_output.write(results.render()[0])
-            t4 = time_sync()
-            video_write_time = t4 - t3
-            video_write_fps = 1/video_write_time
-            avg_video_write += video_write_time
-            avg_video_write_fps += video_write_fps
+            # t4 = time_sync()
+            # video_write_time = t4 - t3
+            # video_write_fps = 1/video_write_time
+            # avg_video_write += video_write_time
+            # avg_video_write_fps += video_write_fps
 
-            print(f'Processed Frame: {framecount} => Inference Time: ({inference_time:.3f}s) ({inference_fps:.3f} fps); Video File write time: ({video_write_time:.3f}s) ({video_write_fps:.3f} fps)')
-
+            # print(f'Processed Frame: {framecount} => Inference Time: ({inference_time:.3f}s) ({inference_fps:.3f} fps); Video File write time: ({video_write_time:.3f}s) ({video_write_fps:.3f} fps)')
+            pbar.update(i)
             framecount += 1
         else:
             break
     
-    if framecount > 1:
-        avg_inference /= framecount
-        avg_inference_fps /= framecount
-        avg_video_write /= framecount
-        avg_video_write_fps /= framecount
+    # if framecount > 1:
+    #     avg_inference /= framecount
+    #     avg_inference_fps /= framecount
+    #     avg_video_write /= framecount
+    #     avg_video_write_fps /= framecount
 
-        print(f"\nFinished processing video. REPORT:\nTotal frames: {framecount}; Input Video Duration: {video_duration}; Total time required: {time_sync() - t0:.3f}")
-        print(f'Average Inference Time per frame: {avg_inference}s ({avg_inference_fps} fps)')
-        print(f'Average Video Write Time per frame: {avg_video_write}s ({avg_video_write_fps} fps)')
+    #     print(f"\nFinished processing video. REPORT:\nTotal frames: {framecount}; Input Video Duration: {video_duration}; Total time required: {time_sync() - t0:.3f}")
+    #     print(f'Average Inference Time per frame: {avg_inference}s ({avg_inference_fps} fps)')
+    #     print(f'Average Video Write Time per frame: {avg_video_write}s ({avg_video_write_fps} fps)')
     
     video_capture.release()
     video_output.release()
@@ -83,7 +96,7 @@ model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\yolo_
 # cv2.waitKey(0)
 
 input_directory = r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode\08-06-2021_18-00.mkv'
-output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\Extended_Transfer_Learning\08-06-2021_18-00.mkv'
+output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\08-06-2021_18-00.mkv'
 # for files in os.listdir(input_directory):
 #     if files[-3:] in ['mkv', 'avi', 'mp4', 'mov']:
 #         input_location = input_directory + f'\{files}'
