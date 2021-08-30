@@ -96,8 +96,8 @@ model_weight_5x6 = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\T
 # cv2.imshow('Windows', img_output[..., ::-1].copy())
 # cv2.waitKey(0)
 
-input_directory = r'C:\Vishal-Videos\Project_Escooter_Tracking\samples\re-encode\08-06-2021_16-40.mkv'
-output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\Extended_Transfer_Learning\08-06-2021_16-40.mkv'
+input_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Test_Samples\GH013110_original_cutout.mp4'
+output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\Extended_Transfer_Learning\GH013110_original_cutout.mp4'
 # for files in os.listdir(input_directory):
 #     if files[-3:] in ['mkv', 'avi', 'mp4', 'mov']:
 #         input_location = input_directory + f'\{files}'
