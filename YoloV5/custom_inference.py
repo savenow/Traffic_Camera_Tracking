@@ -26,7 +26,7 @@ def video_inference(input_path, output_path, model_weights):
 
     video_output = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*codec), float(fps), (width, height),)
     model = torch.hub.load(
-        r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files', 
+        r'/content/Traffic_Camera_Tracking/YoloV5/yolo_v5_main_files', 
         'custom', 
         path=model_weights, 
         source='local'
@@ -82,8 +82,8 @@ def video_inference(input_path, output_path, model_weights):
 
 # Model
 # model = torch.hub.load(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files', 'custom', path=r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\runs\train\exp10\weights\best.pt', source='local')  # or yolov5m, yolov5l, yolov5x, custom
-model_weight = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\yolo_save_weights\tl_extended_epoch_30.pt'
-model_weight_5x6 = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\yolov5x6.pt'
+model_weight = r'/content/tl_extended_epoch_30.pt'
+#model_weight_5x6 = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Traffic_Camera_Tracking\YoloV5\yolo_v5_main_files\yolov5x6.pt'
 # Images
 # img = r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new\31\images\frame_000154.png'  # or file, Path, PIL, OpenCV, numpy, list
 
@@ -96,8 +96,8 @@ model_weight_5x6 = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\T
 # cv2.imshow('Windows', img_output[..., ::-1].copy())
 # cv2.waitKey(0)
 
-input_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Test_Samples\GH013110_original_cutout.mp4'
-output_directory = r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\Infered_Videos\Yolo_Infered_Videos\Extended_Transfer_Learning\GH013110_original_cutout.mp4'
+input_directory = r'/content/31.mp4'
+output_directory = r'/content/31_2.mp4'
 # for files in os.listdir(input_directory):
 #     if files[-3:] in ['mkv', 'avi', 'mp4', 'mov']:
 #         input_location = input_directory + f'\{files}'
