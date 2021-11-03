@@ -6,7 +6,7 @@ color_boxes = [(255, 99, 99), (255, 120, 120), (255, 150, 150), (255, 80, 80)]
 
 
 def show_tracker_bbox_score(input, frame):
-    
+       
     img = frame
     for (detection, score) in input:
         # For bounding box
@@ -37,10 +37,11 @@ def show_tracker_bbox_score(input, frame):
 
 Object_tracker = Sort()
 # get detections
-boxes = predictions.pred_boxes.tensor.numpy() if predictions.has("pred_boxes") else None
-scores = predictions.scores if predictions.has("scores") else None
+#boxes = predictions.pred_boxes.tensor.numpy() if predictions.has("pred_boxes") else None
+#scores = predictions.scores if predictions.has("scores") else None
 if boxes is None:
-    track_bbs_ids = mot_tracker.update()
+    #track_bbs_ids = mot_tracker.update()
+    detections = np.empty((0, 5)
 else:
     detections = process_bboxes_scores(boxes, scores)
 # detections is a np.array of the form [[x1, x2, y1, y2, score], [x1, x2, y1, y2, score], ....]
