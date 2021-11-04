@@ -1,4 +1,3 @@
-
 """
     MINOR MODIFICATION FOR ClassySORT:
     In the original implementation of SORT, 
@@ -124,8 +123,9 @@ class KalmanBoxTracker(object):
         self.hit_streak = 0
         self.age = 0
         
-        #keep yolov5 detected class information
+        # keep yolov5 detected class information
         self.detclass = bbox[5]
+        self.score = bbox[6]
         
     def update(self, bbox):
         """
@@ -137,6 +137,7 @@ class KalmanBoxTracker(object):
         self.hit_streak += 1
         self.kf.update(convert_bbox_to_z(bbox))
         self.detclass = bbox[5]
+        self.score = bbox[6]
         
     def predict(self):
         """
@@ -161,13 +162,14 @@ class KalmanBoxTracker(object):
         arr3 = np.expand_dims(arr2, 0)
         np.concatenate((arr1,arr3), axis=1)
         """
+        arr_score = np.expand_dims(np.array([self.score]), 0)
         arr_detclass = np.expand_dims(np.array([self.detclass]), 0)
         
         arr_u_dot = np.expand_dims(self.kf.x[4],0)
         arr_v_dot = np.expand_dims(self.kf.x[5],0)
         arr_s_dot = np.expand_dims(self.kf.x[6],0)
         
-        return np.concatenate((convert_x_to_bbox(self.kf.x), arr_detclass, arr_u_dot, arr_v_dot, arr_s_dot), axis=1)
+        return np.concatenate((convert_x_to_bbox(self.kf.x), arr_score, arr_detclass, arr_u_dot, arr_v_dot, arr_s_dot), axis=1)
     
 def associate_detections_to_trackers(detections, trackers, iou_threshold = 0.3):
     """
@@ -228,7 +230,7 @@ class Sort(object):
         self.iou_threshold = iou_threshold
         self.trackers = []
         self.frame_count = 0
-    def update(self, dets= np.empty((0,6))):
+    def update(self, dets= np.empty((0,7))):
         """
         Parameters:
         'dets' - a numpy array of detection in the format [[x1, y1, x2, y2, score], [x1,y1,x2,y2,score],...]
@@ -242,7 +244,7 @@ class Sort(object):
         self.frame_count += 1
         
         # Get predicted locations from existing trackers
-        trks = np.zeros((len(self.trackers), 6))
+        trks = np.zeros((len(self.trackers), 7))
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
@@ -261,7 +263,7 @@ class Sort(object):
             
         # Create and initialize new trackers for unmatched detections
         for i in unmatched_dets:
-            trk = KalmanBoxTracker(np.hstack((dets[i,:], np.array([0]))))
+            trk = KalmanBoxTracker(np.hstack(dets[i,:]))
             #trk = KalmanBoxTracker(np.hstack(dets[i,:])
             self.trackers.append(trk)
         
@@ -276,7 +278,7 @@ class Sort(object):
                 self.trackers.pop(i)
         if(len(ret) > 0):
             return np.concatenate(ret)
-        return np.empty((0,6))
+        return np.empty((0,7))
 
 def parse_args():
     """Parse input arguments."""
