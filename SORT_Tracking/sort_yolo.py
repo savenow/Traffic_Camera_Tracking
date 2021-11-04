@@ -124,8 +124,8 @@ class KalmanBoxTracker(object):
         self.age = 0
         
         # keep yolov5 detected class information
-        self.detclass = bbox[5]
-        self.score = bbox[6]
+        self.score = bbox[5]
+        self.detclass = bbox[6]
         
     def update(self, bbox):
         """
@@ -136,8 +136,9 @@ class KalmanBoxTracker(object):
         self.hits += 1
         self.hit_streak += 1
         self.kf.update(convert_bbox_to_z(bbox))
-        self.detclass = bbox[5]
-        self.score = bbox[6]
+        self.score = bbox[5]
+        self.detclass = bbox[6]
+        
         
     def predict(self):
         """
@@ -234,7 +235,7 @@ class Sort(object):
     def reset_count(self):
         KalmanBoxTracker.count = 0
   
-    def update(self, dets= np.empty((0,7))):
+    def update(self, dets=np.empty((0,7))):
         """
         Parameters:
         'dets' - a numpy array of detection in the format [[x1, y1, x2, y2, score], [x1,y1,x2,y2,score],...]
