@@ -253,7 +253,7 @@ class Sort(object):
         ret = []
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict()[0]
-            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0, 0]
+            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0, 0, 0]
             if np.any(np.isnan(pos)):
                 to_del.append(t)
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
