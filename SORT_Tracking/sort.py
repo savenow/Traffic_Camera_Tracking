@@ -219,6 +219,8 @@ class Sort(object):
 
     NOTE: The number of objects returned may differ from the number of detections provided.
     """
+
+    # New dets -> [[x1,y1,x2,y2,score, class_id],[x1,y1,x2,y2,score, class_id],...]
     self.frame_count += 1
     # get predicted locations from existing trackers.
     trks = np.zeros((len(self.trackers), 5))
