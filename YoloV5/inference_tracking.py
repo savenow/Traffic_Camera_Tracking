@@ -12,7 +12,7 @@ from sort_yolo import Sort
 
 
 def show_tracker_bbox(input, frame):
-    classID_dict = {0: ("Escooter", (0, 90, 255)), 1: ("Pedestrians", (255, 90, 0)), 2: ("Cyclists", (90, 255, 0))}
+    classID_dict = {0: ("Escooter", (0, 90, 255)), 1: ("Pedestrian", (255, 90, 0)), 2: ("Cyclist", (90, 255, 0))}
     
     img = frame
     for detection in input:
@@ -74,6 +74,9 @@ def video_inference(input_path, output_path, model_weights, class_name=None):
                            'custom',
                            path=model_weights,
                            source='local')
+    model.cuda()
+    model.half()
+
     framecount = 1
 
     device = torch.device('cuda:0')
@@ -113,7 +116,7 @@ def video_inference(input_path, output_path, model_weights, class_name=None):
 
 # Model
 model_weight = r'D:\Vishal-Videos\Project_Escooter_Tracking\tl_extended_epoch_30.pt'
-input_directory = r'D:\Vishal-Videos\Project_Escooter_Tracking\samples\08-06-2021_09-40.mkv'
-output_directory = r'D:\Vishal-Videos\Project_Escooter_Tracking\samples\infered\1_08-06-2021_09-40.mkv'
+input_directory = r'D:\Vishal-Videos\Project_Escooter_Tracking\input_new\50\50.mp4'
+output_directory = r'D:\Vishal-Videos\Project_Escooter_Tracking\samples\infered\50_tracking.mkv'
 class_name = 'Escooter'
 video_inference(input_directory, output_directory, model_weight, class_name)
