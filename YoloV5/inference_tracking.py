@@ -1,9 +1,5 @@
-
 import matplotlib
 matplotlib.use('TKAgg')
-
-import importlib
-import sys
 
 import torch
 import time
@@ -11,14 +7,13 @@ import cv2
 import numpy as np
 import random
 
-from Traffic_Camera_Tracking.YoloV5.yolo_v5_main_files.utils.torch_utils import time_sync
+#from YoloV5.yolo_v5_main_files.utils.torch_utils import time_sync
 import os
 from tqdm import tqdm
 import torch.backends.cudnn as cudnn
-from google.colab.patches import cv2_imshow
 
 # # Importing sort
-from Traffic_Camera_Tracking.SORT_Tracking.sort_yolo import Sort
+from sort_yolo import Sort
 # importlib.reload(Sort)
 
 def show_tracker_bbox(input, frame, Score_ClassIDs):
@@ -129,7 +124,7 @@ def video_inference(input_path, output_path, model_weights, class_name=None):
     codec = 'mp4v'
 
     video_output = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*codec), float(fps), (width, height),)
-    model = torch.hub.load(r'/content/Traffic_Camera_Tracking/YoloV5/yolo_v5_main_files',
+    model = torch.hub.load(r'YoloV5\yolo_v5_main_files',
                            'custom',
                            path=model_weights,
                            source='local')
@@ -176,8 +171,8 @@ def video_inference(input_path, output_path, model_weights, class_name=None):
     video_output.release()
 
 # Model
-model_weight = r'/content/tl_extended_epoch_30.pt'
-input_directory = r'/content/drive/MyDrive/YOLO/Sample Videos/08-06-2021_09-40.mkv'
-output_directory = r'/content/drive/MyDrive/YOLO/tl_extended_results/08-06-2021_09-40.mkv'
+model_weight = r'D:\Vishal-Videos\Project_Escooter_Tracking\tl_extended_epoch_30.pt'
+input_directory = r'D:\Vishal-Videos\Project_Escooter_Tracking\samples\08-06-2021_09-40.mkv'
+output_directory = r'D:\Vishal-Videos\Project_Escooter_Tracking\samples\infered\1_08-06-2021_09-40.mkv'
 class_name = 'Escooter'
 video_inference(input_directory, output_directory, model_weight, class_name)
