@@ -124,8 +124,8 @@ class KalmanBoxTracker(object):
         self.age = 0
         
         # keep yolov5 detected class information
-        self.score = bbox[5]
-        self.detclass = bbox[6]
+        self.score = bbox[4]
+        self.detclass = int(bbox[5])
         
     def update(self, bbox):
         """
@@ -136,8 +136,8 @@ class KalmanBoxTracker(object):
         self.hits += 1
         self.hit_streak += 1
         self.kf.update(convert_bbox_to_z(bbox))
-        self.score = bbox[5]
-        self.detclass = bbox[6]
+        self.score = bbox[4]
+        self.detclass = int(bbox[5])
         
         
     def predict(self):
@@ -235,7 +235,7 @@ class Sort(object):
     def reset_count(self):
         KalmanBoxTracker.count = 0
   
-    def update(self, dets=np.empty((0,7))):
+    def update(self, dets=np.empty((0,6))):
         """
         Parameters:
         'dets' - a numpy array of detection in the format [[x1, y1, x2, y2, score], [x1,y1,x2,y2,score],...]
@@ -249,12 +249,12 @@ class Sort(object):
         self.frame_count += 1
         
         # Get predicted locations from existing trackers
-        trks = np.zeros((len(self.trackers), 7))
+        trks = np.zeros((len(self.trackers), 6))
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict()[0]
-            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0, 0, 0]
+            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0, 0]
             if np.any(np.isnan(pos)):
                 to_del.append(t)
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
