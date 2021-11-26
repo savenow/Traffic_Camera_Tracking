@@ -1,12 +1,12 @@
 import torch
 import time
 import cv2
-from tqdm import notebook
+from tqdm import tqdm
 import torch.backends.cudnn as cudnn
 from statistics import mean
 
 
-class TqdmExtraFormat(notebook.tqdm):
+class TqdmExtraFormat(tqdm):
     """Provides a `total_time` format parameter"""
     @property
     def format_dict(self):
@@ -28,7 +28,7 @@ def video_inference(input_path, output_path, model_weights, bs):
 
     video_output = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*codec), float(fps), (width, height),)
     model = torch.hub.load(
-        r'/content/Traffic_Camera_Tracking/YoloV5/yolo_v5_main_files', 
+        '/home/students-fkk/yolov5', 
         'custom', 
         path=model_weights, 
         source='local'
@@ -46,11 +46,13 @@ def video_inference(input_path, output_path, model_weights, bs):
     imgs = []
     fps_per_batch_total = []
     fps_total = []
+    frame_count = 0
 
     pbar = TqdmExtraFormat(total = total_frames, desc='Inference Progress: ')
     while video_capture.isOpened():
         _, frame = video_capture.read()    
-        if _:         
+        if _:    
+            frame_count += 1     
             pbar.update(tqdm_count)
             
             if batch_count != batch_size:
@@ -76,7 +78,7 @@ def video_inference(input_path, output_path, model_weights, bs):
                 time.sleep(1/fps)
         else:
             if imgs:
-              results = model(imgs, size=1280)
+              results = model(imgs, size=1408)
               
               for image in results.render():
                 pbar.update(tqdm_count)
@@ -89,11 +91,11 @@ def video_inference(input_path, output_path, model_weights, bs):
     video_output.release()
 
 # Model
-model_weight = '/content/drive/MyDrive/YOLO/Weights/tl_yolo5l6_78k_bs_3.pt'
+model_weight = 'tl_89k_bs24_im1408_e50.pt'
 
-input_directory = r'/content/drive/MyDrive/YOLO/Sample Videos/sample_small/18.mp4'
-output_directory = r'/content/drive/MyDrive/YOLO/tl_yolov5l6_78k_results/18_1280_bs_16.mkv'
+input_directory = '/media/mydisk/videos/samples/08-06-2021_16-40.mkv'
+output_directory = '/home/students-fkk/Videos/output_e50/08-06-2021_16-40_1408.mkv'
 
 
-for batch in [16]:
+for batch in [128]:
   video_inference(input_directory, output_directory, model_weight, batch)

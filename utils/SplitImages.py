@@ -8,27 +8,27 @@ IMPORTANT: The path of ffmpeg.exe (refer 'ffmpeg_path') must be configured prope
 import os
 
 # Change this main input path to your specific video directory
-input_path = os.path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new')
-ffmpeg_path = os.path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\ffmpeg.exe')
+input_path = os.path.abspath('/media/mydisk/videos/input_new')
+#ffmpeg_path = os.path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code\ffmpeg.exe')
 
 def createFrames():
     for dir in os.listdir(input_path):
-        if os.path.isdir(input_path + '\\' + dir) and dir in ['49', '50', '51']:
-            clip_path = input_path + f'\\{dir}'
+        if os.path.isdir(input_path + '/' + dir) and dir in ['night_13', 'night_15', 'night_17', 'night_19']:
+            clip_path = input_path + f'/{dir}'
         
             print(f'Processing File: {clip_path}')
 
-            image_path = clip_path + '\\images'
+            image_path = clip_path + '/images'
             if not os.path.isdir(image_path):
                 os.makedirs(image_path)
 
             is_video_present = False
-            for files in os.listdir(input_path + '\\' + dir):
+            for files in os.listdir(input_path + '/' + dir):
                 if files[-4:] in ['.mkv', '.mp4', '.avi', '.mov']:
-                    clip_path += f'\\{files}'
+                    clip_path += f'/{files}'
                     is_video_present = True
 
-                    ffmpeg_command = ffmpeg_path + ' -i ' + clip_path + " " + image_path + '\\frame_%06d.png'
+                    ffmpeg_command = 'ffmpeg -i ' + clip_path + " " + image_path + '/frame_%06d.png'
                     print(ffmpeg_command)
                     os.system(ffmpeg_command)
 

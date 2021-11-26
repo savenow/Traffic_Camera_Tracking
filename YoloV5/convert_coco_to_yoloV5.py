@@ -58,7 +58,7 @@ def create_base_yaml(yolo_data_folder, classes_present):
     num_class = len(classes_present)
     
     # Creating base.yaml file
-    obj_data_path = yolo_data_folder + f'\\base.yaml'
+    obj_data_path = yolo_data_folder + f'/base.yaml'
     if os.path.exists(obj_data_path):
         os.remove(obj_data_path)
     with open(obj_data_path, 'w+') as f:
@@ -126,9 +126,9 @@ def copy_images_labels(data, img_dir, label_dir):
     for item in data:
         shutil.copy2(item[1], img_dir)
         new_img_name = f'frame_{item[0]}.png'
-        os.rename(f"{img_dir}\\{item[1][-16:]}", f"{img_dir}\\{new_img_name}")
+        os.rename(f"{img_dir}/{item[1][-16:]}", f"{img_dir}/{new_img_name}")
 
-        label = f'{label_dir}\\frame_{item[0]}.txt'
+        label = f'{label_dir}/frame_{item[0]}.txt'
         with open(label, 'w+') as file:
             file.writelines(item[2])
 
@@ -165,18 +165,18 @@ def main(main_path, files_path, train_split):
     # Creating Yolo Folder (train.txt, valid.txt and data directory)
     # This deletes any pre-existing files and creating new ones.
 
-    yolo_folder = f'{main_path}\Yolo_data'
+    yolo_folder = f'{main_path}/Yolo_data'
     if os.path.exists(yolo_folder):
         shutil.rmtree(yolo_folder)
     os.makedirs(yolo_folder, exist_ok=True)
     
-    img_directory = f'{yolo_folder}\\images'
-    train_img_directory = f'{img_directory}\\train'
-    valid_img_directory = f'{img_directory}\\valid'
+    img_directory = f'{yolo_folder}/images'
+    train_img_directory = f'{img_directory}/train'
+    valid_img_directory = f'{img_directory}/valid'
 
-    labels_directory = f'{yolo_folder}\\labels'
-    train_label_directory = f'{labels_directory}\\train'
-    valid_label_directory = f'{labels_directory}\\valid'
+    labels_directory = f'{yolo_folder}/labels'
+    train_label_directory = f'{labels_directory}/train'
+    valid_label_directory = f'{labels_directory}/valid'
     
     os.makedirs(train_img_directory)
     os.makedirs(valid_img_directory)
@@ -203,11 +203,11 @@ def main(main_path, files_path, train_split):
 
     for files in os.listdir(files_path):
         # Looping through each folder and getting the annotations
-        clip_folder = files_path + '\\' + files
+        clip_folder = files_path + '/' + files
 
         if os.path.isdir(clip_folder):
             total_clips += 1
-            annotation_path = clip_folder + '\\COCO\\annotations\\instances_default.json'
+            annotation_path = clip_folder + '/COCO/annotations/instances_default.json'
             annotation_dict = json.load(open(annotation_path))
             
             print(f'Annotations Path: {annotation_path}')
@@ -226,7 +226,7 @@ def main(main_path, files_path, train_split):
 
             for image in annotation_dict['images']:
                 # Converting the relative path in each annotation to abs path and adjusting for frame offset
-                abs_img_path = clip_folder + f"\\images\\{image['file_name']}"
+                abs_img_path = clip_folder + f"/images/{image['file_name']}"
                 frame_adjusted_img_filename = adjustFrameDifference(abs_img_path)
 
                 anno_string = ''
@@ -275,16 +275,18 @@ def main(main_path, files_path, train_split):
     random.shuffle(data_list)
     train_data = data_list[:int((len(data_list)+1)*train_split)]
     validation_data = data_list[int((len(data_list)+1)*train_split):]
-
+    
     # Copying the train and validation into appropriate folders
+    print("\nNow copying the files into respective directories....")
     copy_images_labels(train_data, train_img_directory, train_label_directory)
     copy_images_labels(validation_data, valid_img_directory, valid_label_directory)
+    print("Copy successfull. Training Data is ready !!")
 
 
 # These paths must be definitely changed according to your own system
 # I (prefer) recommend using absolute paths to avoid confusions
-output_path = os.path.abspath(r'C:\Users\balaji\Desktop\Traffic_Camera_Tracking\Main_Code')
-clips_path = os.path.abspath(r'C:\Vishal-Videos\Project_Escooter_Tracking\input_new')
+clips_path = os.path.abspath('/media/mydisk/videos/input_new')
+output_path = os.path.abspath('/media/mydisk/videos/training_data')
 train_valid_split = 0.85    # 85% is in train and 15% is in validation
 
 main(output_path, clips_path, train_valid_split)
