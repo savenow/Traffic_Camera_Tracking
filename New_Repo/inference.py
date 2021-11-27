@@ -5,7 +5,7 @@ import os
 from tqdm import tqdm
 from collections import namedtuple
 import torch.backends.cudnn as cudnn
-
+from visualizer import Visualizer
 from sort_yoloV5 import Sort
 
 class Inference():
@@ -85,6 +85,7 @@ class Inference():
         self.Objtracker = Sort(max_age=30, min_hits=7, iou_threshold=0.15)
         self.Objtracker.reset_count()
 
+
         # Running inference on different types of input
         if self.inference_mode == 'Video':
             self.VideoInference()
@@ -106,13 +107,14 @@ class Inference():
 
         video_output = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*codec), float(fps), (width, height),)
 
+        Visualize = Visualizer()
+        
         while video_capture.isOpened():
             _, self.frame = video_capture.read()
 
             if _:
                 output = self.InferFrame()
-                
-                video_output.write()
+                video_output.write(Visualize.drawBBOX(output))
             else:
                 break
         
