@@ -114,7 +114,7 @@ class Inference():
 
             if _:
                 output = self.InferFrame()
-                video_output.write(Visualize.drawBBOX(output))
+                video_output.write(Visualize.drawBBOX(output, self.frame))
             else:
                 break
         
