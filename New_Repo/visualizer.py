@@ -94,11 +94,11 @@ class Visualizer():
         """Draws the BBOX along with Tracker ID and speed for every detection
 
         Args:
-            trackers (array): SORT Tracker object
+            trackers (array): SORT Tracker object (with speed(kmh) as the last element)
             frame (image): Image to draw
 
         Returns:
-            image: Image with tracker id and bbox
+            image: Image with tracker id, speed(kmh) and bbox
         """
         for detection in trackers:
             x1, y1, x2, y2 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3])
