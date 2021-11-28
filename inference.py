@@ -34,7 +34,6 @@ class Inference():
         self.half = True
         cudnn.benchmark = True
         
-        
         # Checking input
         if os.path.isfile(input):
             # Further functionality needs to be added for Folder Inference :))
@@ -94,16 +93,7 @@ class Inference():
         self.trackDict = defaultdict(list)
         self.trackCount = 0
 
-        # Running inference on different types of input
-        # if self.inference_mode == 'Video':
-        #     self.VideoInference()
-
         self.runInference()
-    
-    def InferFrame(self):
-        #if self.inference_backend == 'PyTorch':
-        results = self.model(self.frame, size=self.img_size)
-        return results.xyxy[0]
     
     def UpdateTracker(self, pred):
         if len(pred) > 0:
@@ -125,9 +115,8 @@ class Inference():
 
             trackID = int(detection[9])
             self.trackDict[trackID].append((center_x, center_y))
-            #self.trackCount += 1
             
-            if len(self.trackDict[trackID]) > 2: #self.velocity_frame_window:
+            if len(self.trackDict[trackID]) > 2: 
                 
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][0])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][1])
@@ -138,7 +127,7 @@ class Inference():
                 speed_kmH = round(float((distance_metres * self.fps)) * 3.6 , 2)
                 velocity_array.append(np.append(detection, speed_kmH))
             
-            return velocity_array
+        return velocity_array
 
     def runInference(self):
         dataset = LoadImages(self.input, img_size=self.img_size, stride=self.stride, auto=self.pt and not self.jit)
@@ -189,83 +178,38 @@ class Inference():
             if self.inference_mode == 'SingleImage':
                 self.frame = Visualize.drawBBOX(pred[0], im0)
                 cv2.imwrite(self.output, self.frame)
+            
             elif self.inference_mode == 'Video':
                 # Update the tracker
                 self.UpdateTracker(pred[0])
+                
+                # Velocity Estimation
                 velocity_estimation = []
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
+                
                 if calculated_velocity:
                     self.frame = Visualize.drawAll(calculated_velocity, im0)
                 elif len(self.tracker) > 0:
                     self.frame = Visualize.drawTracker(self.tracker, im0)
                 elif len(pred) > 0:
                     self.frame = Visualize.drawBBOX(pred[0], im0)
-                
-                
+                                
                 if vid_path[i] != self.output:  # new video
                     vid_path[i] = self.output
                     if isinstance(vid_writer[i], cv2.VideoWriter):
                         vid_writer[i].release()  # release previous video writer
                     if vid_cap:  # video
-                        
                         w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    else:  # stream
+                    else:  
                         w, h = im0.shape[1], im0.shape[0]
-                        #save_path += '.mp4'
+                        
                     vid_writer[i] = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
-                vid_writer[i].write(self.frame)
-            
-            
+                vid_writer[i].write(self.frame) 
             
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *self.img_size)}' % t)
-        #return pred
-    
-    # def VideoInference(self):
-    #     video_capture = cv2.VideoCapture(self.input)
-
-    #     self.width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-    #     self.height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    #     self.fps = int(video_capture.get(cv2.CAP_PROP_FPS))
-    #     total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    #     video_duration = total_frames / self.fps
-    #     codec = 'mp4v'
-
-    #     video_output = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*codec), float(self.fps), (self.width, self.height),)
-
-    #     Visualize = Visualizer()
-    #     frame_count = 0
-    #     while video_capture.isOpened():
-    #         _, self.frame = video_capture.read()
-
-    #         if _:
-    #             frame_count += 1
-    #             output = self.InferFrame()
-    #             #print(output)
-    #             # Updating the tracker
-                
-    #             # Velocity Estimation
-    #             velocity_estimation = []
-                
-                
-                
-    #             if velocity_estimation:
-    #                 self.frame = Visualize.drawAll(velocity_estimation, self.frame)
-    #             elif len(self.tracker) > 0:
-    #                 self.frame = Visualize.drawTracker(self.tracker, self.frame)
-    #             elif len(output) > 0:
-    #                 self.frame = Visualize.drawBBOX(output, self.frame)
-                
-    #             video_output.write(self.frame)
-    #         else:
-    #             break
-        
-    #     video_capture.release()
-    #     video_output.release()
-
-    
     
 if __name__ == "__main__":
     Inference(
