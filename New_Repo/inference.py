@@ -135,25 +135,9 @@ class Inference():
                 else:
                     tracker = self.Objtracker.update()
                 
-                # Values for velocity estimation
-                # for detection in tracker:
-                #     center_x = (detection[0] + detection[1])/2
-                #     center_y = (detection[2] + detection[3])/2
-                #     self.trackDict[int(detection[9])].append((center_x, center_y))
-                #     self.trackCount += 1
                 
-                velocity_estimation = []
                 # Velocity Estimation
-                #if self.velocity_frame_window < self.trackCount:
-                    # for i in self.trackDict.keys():
-                    #     if len(self.trackDict[i]) > self.velocity_frame_window:
-                    #         previous_point = self.Calib.projection_pixel_to_world(self.trackDict[i][0])
-                    #         current_point = self.Calib.projection_pixel_to_world(self.trackDict[i][-1])
-
-                    #         del self.trackDict[i][0]
-
-                    #         distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
-                    #         speed_kmH = round(float((distance_metres * self.fps)/ (self.velocity_frame_window)) * 3.6 , 2)
+                velocity_estimation = []
                     
                 for detection in tracker:
                     center_x = (detection[0] + detection[1])/2
