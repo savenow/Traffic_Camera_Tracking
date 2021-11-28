@@ -459,11 +459,15 @@ class AutoShape(nn.Module):
         #   multiple:        = [Image.open('image1.jpg'), Image.open('image2.jpg'), ...]  # list of images
 
         t = [time_sync()]
-        p = next(self.model.parameters())  # for device and type
-        if isinstance(imgs, torch.Tensor):  # torch
-            with amp.autocast(enabled=p.device.type != 'cpu'):
-                return self.model(imgs.to(p.device).type_as(p), augment, profile)  # inference
-
+        
+        if self.type == 'PyTorch':
+            p = next(self.model.parameters())  # for device and type
+            if isinstance(imgs, torch.Tensor):  # torch
+                with amp.autocast(enabled=p.device.type != 'cpu'):
+                    return self.model(imgs.to(p.device).type_as(p), augment, profile)  # inference
+        elif self.type == 'TensorRT':
+            device = 'cuda:0'
+            type = torch.HalfTensor
         # Pre-process
         n, imgs = (len(imgs), imgs) if isinstance(imgs, list) else (1, [imgs])  # number of images, list of images
         shape0, shape1, files = [], [], []  # image and inference shapes, filenames
@@ -483,7 +487,11 @@ class AutoShape(nn.Module):
             g = (size / max(s))  # gain
             shape1.append([y * g for y in s])
             imgs[i] = im if im.data.contiguous else np.ascontiguousarray(im)  # update
-        shape1 = [make_divisible(x, int(self.stride.max())) for x in np.stack(shape1, 0).max(0)]  # inference shape
+        #print(self.stride)
+        if self.type == 'TensorRT':
+            shape1 = [make_divisible(x, int(self.stride)) for x in np.stack(shape1, 0).max(0)]  # inference shape
+        else:
+            shape1 = [make_divisible(x, int(self.stride.max())) for x in np.stack(shape1, 0).max(0)]  # inference shape
         x = [letterbox(im, new_shape=shape1, auto=False)[0] for im in imgs]  # pad
         x = np.stack(x, 0) if n > 1 else x[0][None]  # stack
         x = np.ascontiguousarray(x.transpose((0, 3, 1, 2)))  # BHWC to BCHW

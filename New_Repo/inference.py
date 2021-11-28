@@ -78,7 +78,7 @@ class Inference():
                             source='local')
         else:
             self.model = DetectMultiBackend(self.model_weights, device=self.device, dnn=False)
-            self.model = AutoShape(self.model)
+            self.model = AutoShape(self.model, type='TensorRT')
 
         # Initialize Tracker
         self.Objtracker = Sort(max_age=30, min_hits=7, iou_threshold=0.15)
@@ -199,6 +199,6 @@ class Inference():
 if __name__ == "__main__":
     Inference(
         '/media/mydisk/videos/input_new/29/29.mp4', 
-        '/home/students-fkk/Traffic_Camera_Tracking/tl_l6_89k_bs24_im1408_e150.engine',
+        '/home/students-fkk/Traffic_Camera_Tracking/tl_l6_89k_bs24_im1408_e150.pt',
         '/media/mydisk/videos/output_e150/29.mp4'
     )
