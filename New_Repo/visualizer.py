@@ -20,7 +20,13 @@ class Visualizer():
             frame (image): Image with all the BBOXes
         """
         for detection in xyxy:
-            x1, y1, x2, y2 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3])
+            
+            x1, y1, x2, y2 = detection[0:4]
+            x1 = int(x1)
+            y1 = int(y1)
+            x2 = int(x2)
+            y2 = int(y2)
+
             conf_score = round(detection[4].item() * 100, 1)
             classID = int(detection[5].item())
 
@@ -55,7 +61,12 @@ class Visualizer():
             image: Image with tracker id and bbox
         """
         for detection in trackers:
-            x1, y1, x2, y2 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3])
+            x1, y1, x2, y2 = detection[0:4]
+            x1 = int(x1)
+            y1 = int(y1)
+            x2 = int(x2)
+            y2 = int(y2)
+
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
@@ -101,7 +112,12 @@ class Visualizer():
             image: Image with tracker id, speed(kmh) and bbox
         """
         for detection in trackers:
-            x1, y1, x2, y2 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3])
+            x1, y1, x2, y2 = detection[0:4]
+            x1 = int(x1)
+            y1 = int(y1)
+            x2 = int(x2)
+            y2 = int(y2)
+
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])

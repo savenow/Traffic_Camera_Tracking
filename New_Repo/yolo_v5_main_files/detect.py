@@ -78,8 +78,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     device = select_device(device)
     model = DetectMultiBackend(weights, device=device, dnn=dnn)
     stride, names, pt, jit, onnx, engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
+    print(imgsz)
     imgsz = check_img_size(imgsz, s=stride)  # check image size
-
+    print(imgsz)
     # Half
     half &= (pt or engine) and device.type != 'cpu'  # half precision only supported by PyTorch on CUDA
     if pt:
@@ -98,7 +99,11 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
     # Run inference
     if pt and device.type != 'cpu':
+        print(imgsz)
+        print(*imgsz)
+        
         model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.model.parameters())))  # warmup
+        exit()
     dt, seen = [0.0, 0.0, 0.0], 0
     for path, im, im0s, vid_cap, s in dataset:
         t1 = time_sync()
