@@ -430,11 +430,12 @@ class AutoShape(nn.Module):
     multi_label = False  # NMS multiple labels per box
     max_det = 1000  # maximum number of detections per image
 
-    def __init__(self, model):
+    def __init__(self, model, type='PyTorch'):
         super().__init__()
         LOGGER.info('Adding AutoShape... ')
         copy_attr(self, model, include=('yaml', 'nc', 'hyp', 'names', 'stride', 'abc'), exclude=())  # copy attributes
         self.model = model.eval()
+        self.type = type
 
     def _apply(self, fn):
         # Apply to(), cpu(), cuda(), half() to model tensors that are not parameters or registered buffers
@@ -491,7 +492,13 @@ class AutoShape(nn.Module):
 
         with amp.autocast(enabled=p.device.type != 'cpu'):
             # Inference
-            y = self.model(x, augment, profile)[0]  # forward
+            if self.type == 'TensorRT':
+                assert im.shape == self.bindings['images'].shape, (im.shape, self.bindings['images'].shape)
+                self.binding_addrs['images'] = int(im.data_ptr())
+                self.context.execute_v2(list(self.binding_addrs.values()))
+                y = self.bindings['output'].data[0]
+            elif self.type == 'PyTorch':
+                y = self.model(x, augment, profile)[0]  # forward
             t.append(time_sync())
 
             # Post-process
