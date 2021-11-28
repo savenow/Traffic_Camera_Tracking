@@ -136,7 +136,9 @@ class Inference():
 
         Visualize = Visualizer()
         dt, seen = [0.0, 0.0, 0.0], 0
+        framecount = 0
         for path, im, im0, vid_cap, s in dataset:
+            framecount += 1
             t1 = time_sync()
             im = torch.from_numpy(im).to(self.device)
             im = im.half() if self.half else im.float()  # uint8 to fp16/32
@@ -207,13 +209,17 @@ class Inference():
                     vid_writer[i] = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer[i].write(self.frame) 
             
+            if framecount > 10000:
+                vid_writer[i].release()
+                break
+            
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *self.img_size)}' % t)
     
 if __name__ == "__main__":
     Inference(
-        '/media/mydisk/videos/input_new/29/29.mp4', 
-        '/home/students-fkk/Traffic_Camera_Tracking/tl_l6_89k_bs24_im1408_e150.engine',
-        '/media/mydisk/videos/output_e150/29.mp4'
+        '/media/mydisk/videos/samples/08-06-2021_18-00.mkv', 
+        'tl_l6_89k_bs24_im1408_e150.engine',
+        '/media/mydisk/videos/output_e150/08-06-2021_18-00_5min.mkv'
     )
