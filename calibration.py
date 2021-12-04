@@ -2,7 +2,7 @@ import numpy as np
 
 class Calibration():
     
-    def __init__(self):
+    def __init__(self, minimap=False):
         self.OFFSET_X_WORLD = 678000
         self.OFFSET_Y_WORLD = 5400000
 
@@ -21,6 +21,9 @@ class Calibration():
             [ 1528.92256713],
             [-2864.02553347]
         ])
+
+        if minimap:
+            self.homography_CameraToMap = np.load('/map_files/homography_CameraToMap.npy')
     
     def projection_pixel_to_world(self, pixel_point):
         pixel_point = np.array([pixel_point[0], pixel_point[1], 1]).reshape(3, 1)
@@ -45,3 +48,11 @@ class Calibration():
         pixel = pixels_s / pixels_s[2]
         pixel = np.around(pixel, 2).astype(dtype=np.float32)
         return np.asarray([pixel[0][0], pixel[1][0]], dtype=np.float32)
+    
+    def projection_image_to_map(self, image_coordinates):
+        x, y = image_coordinates
+        pt1 = np.array([x, y, 1])
+        pt1 = pt1.reshape(3, 1)
+        pt2 = np.dot(self.homography_CameraToMap, pt1)
+        pt2 = pt2 / pt2[2]
+        return (int(pt2[0]), int(pt2[1]))

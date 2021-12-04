@@ -1,13 +1,32 @@
 import cv2
 
 class Visualizer():
-    def __init__(self):
+    def __init__(self, minimap=False, minimap_type='Road', minimap_img_location=((1423, 710), (1865, 1030))):
         self.classID_dict = {
             0: ("Escooter", (0, 90, 255)), 
             1: ("Pedestrians", (255, 90, 0)), 
             2: ("Cyclists", (90, 255, 0))
         }
         self.textColor = (255, 255, 255)
+        
+        if minimap:
+            self.showMinimap = True
+            if minimap_type == 'Terrain':
+                self.Minimap = cv2.imread('/map_files/map_satellite_cropped.png')
+            elif minimap_type == 'Road':
+                self.Minimap = cv2.imread('/map_files/map_cropped.png')
+            else:
+                print("Wrong Minimap type...defaulting to 'Terrain'")
+                self.Minimap = cv2.imread('/map_files/map_satellite_cropped.png')
+
+            # Location in the main image to insert minimap
+            self.locationMinimap = minimap_img_location
+            
+            # Resizing the minimap accordingly
+            resize_width = self.locationMinimap[1][0] -self.locationMinimap[0][0]
+            resize_height = self.locationMinimap[1][1] - self.locationMinimap[0][1]
+
+            self.Minimap = cv2.resize(self.Minimap, (resize_width, resize_height))
 
     def drawBBOX(self, xyxy, frame):
         """Draws just the BBOX with the class name and confidence score
@@ -111,6 +130,9 @@ class Visualizer():
         Returns:
             image: Image with tracker id, speed(kmh) and bbox
         """
+        if self.showMinimap:
+            minimap_img = self.Minimap.copy()
+    
         for detection in trackers:
             x1, y1, x2, y2 = detection[0:4]
             x1 = int(x1)
@@ -121,9 +143,9 @@ class Visualizer():
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
-            speed = detection[-1]
+            speed = detection[-2]
             
-            color = self.classID_dict[classID][1]
+            color = self.classID_dict[classID][1] 
             
             # Displays the main bbox
             frame = cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
@@ -159,5 +181,11 @@ class Visualizer():
                 frame, baseLabel, (x1, y1 - 5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
-        
+
+            if self.showMinimap:
+                minimap_point = detection[-1]
+                cv2.circle(minimap_img, tuple(minimap_point), 2, color, -1, cv2.LINE_AA)
+
+                # Adding the minimap into the frame
+                frame[self.locationMinimap[0][1]:self.locationMinimap[1][1], self.locationMinimap[0][0]:self.locationMinimap[1][0]] = minimap_img
         return frame

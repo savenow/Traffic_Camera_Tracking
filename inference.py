@@ -21,7 +21,7 @@ from visualizer import Visualizer
 from calibration import Calibration
 
 class Inference():
-    def __init__(self, input, model_weights, output=None, imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None, minimap=False, imgSize=[1408, 1408]):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -86,7 +86,8 @@ class Inference():
         self.Objtracker.reset_count()
 
         # Camera Calibration data: Used for velocity estimation
-        self.Calib = Calibration()
+        self.enable_minimap = minimap
+        self.Calib = Calibration(self.enable_minimap)
         
         # Parameters for velocity estimation
         self.velocity_frame_window = 5
@@ -121,11 +122,17 @@ class Inference():
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][0])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][1])
 
+                # Calculating homography coordinates to minimap
+                map_point = self.Calib.projection_image_to_map(self.trackDict[trackID][1])
+
                 del self.trackDict[trackID][0]
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
                 speed_kmH = round(float((distance_metres * self.fps)) * 3.6 , 2)
-                velocity_array.append(np.append(detection, speed_kmH))
+                output_array = np.append(detection, speed_kmH)
+                output_array = np.append(output_array, map_point)
+
+                velocity_array.append(output_array)
             
         return velocity_array
 
@@ -134,7 +141,7 @@ class Inference():
         bs = 1
         vid_path, vid_writer = [None] * bs, [None] * bs
 
-        Visualize = Visualizer()
+        Visualize = Visualizer(self.enable_minimap)
         dt, seen = [0.0, 0.0, 0.0], 0
         framecount = 0
         for path, im, im0, vid_cap, s in dataset:
@@ -221,5 +228,6 @@ if __name__ == "__main__":
     Inference(
         '/media/mydisk/videos/samples/08-06-2021_18-00.mkv', 
         'tl_l6_89k_bs24_im1408_e150.engine',
-        '/media/mydisk/videos/output_e150/08-06-2021_18-00_5min.mkv'
+        '/media/mydisk/videos/output_e150/08-06-2021_18-00_5min.mkv',
+        minimap=True
     )
