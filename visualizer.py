@@ -16,19 +16,25 @@ class Minimap():
         # Location in the main image to insert minimap
         self.locationMinimap = minimap_coords
         
+        original_width = self.Minimap.shape[1]
+        original_height = self.Minimap.shape[0]
+
         # Resizing the minimap accordingly
-        resize_width = self.locationMinimap[1][0] -self.locationMinimap[0][0]
+        resize_width = self.locationMinimap[1][0] - self.locationMinimap[0][0]
         resize_height = self.locationMinimap[1][1] - self.locationMinimap[0][1]
 
         self.Minimap = cv2.resize(self.Minimap, (resize_width, resize_height))
 
-    def projection_image_to_map(self, image_coordinates):
-        x, y = image_coordinates
+        self.width_scaling = resize_width/original_width
+        self.height_scaling = resize_height/original_height
+
+    def projection_image_to_map(self, x, y):
+        #x, y = image_coordinates
         pt1 = np.array([x, y, 1])
         pt1 = pt1.reshape(3, 1)
         pt2 = np.dot(self.homography_CameraToMap, pt1)
         pt2 = pt2 / pt2[2]
-        return (pt2[0], pt2[1])
+        return (int(pt2[0]*self.width_scaling), int(pt2[1]*self.height_scaling))
 
 
 class Visualizer():
@@ -87,7 +93,8 @@ class Visualizer():
             )
 
             if self.showMinimap:
-                cv2.circle(minimap_img, tuple((int((x1+x2)/2), int((y1+y2)/2))), 2, color, -1, cv2.LINE_AA)
+                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
+                cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
         return frame
@@ -145,7 +152,8 @@ class Visualizer():
             )
 
             if self.showMinimap:
-                cv2.circle(minimap_img, tuple((int((x1+x2)/2), int((y1+y2)/2))), 2, color, -1, cv2.LINE_AA)
+                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
+                cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
         
         return frame
@@ -213,7 +221,8 @@ class Visualizer():
             )
 
             if self.showMinimap:      
-                cv2.circle(minimap_img, tuple((int((x1+x2)/2), int((y1+y2)/2))), 2, color, -1, cv2.LINE_AA)
+                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
+                cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
         return frame
