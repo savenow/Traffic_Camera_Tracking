@@ -125,7 +125,7 @@ class Inference():
                 del self.trackDict[trackID][-2]
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
-                speed_kmH = round(float((distance_metres * self.fps)/2) * 3.6 , 2)
+                speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
                 output_array = np.append(detection, speed_kmH)
                 velocity_array.append(output_array)
             
@@ -139,6 +139,7 @@ class Inference():
         Visualize = Visualizer(self.enable_minimap)
         dt, seen = [0.0, 0.0, 0.0], 0
         framecount = 0
+        time_start = time_sync()
         for path, im, im0, vid_cap, s in dataset:
             framecount += 1
             t1 = time_sync()
@@ -197,7 +198,7 @@ class Inference():
                     self.frame = Visualize.drawTracker(self.tracker, im0)
                 elif len(pred) > 0:
                     self.frame = Visualize.drawBBOX(pred[0], im0)
-                                
+       
                 if vid_path[i] != self.output:  # new video
                     vid_path[i] = self.output
                     if isinstance(vid_writer[i], cv2.VideoWriter):
@@ -211,18 +212,21 @@ class Inference():
                     vid_writer[i] = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer[i].write(self.frame) 
             
-            if framecount > 300:
+            if framecount > 5000:
                 vid_writer[i].release()
                 break
             
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *self.img_size)}' % t)
+        time_end = time_sync()
+        print(f'Total time for inference (including pre and post-processing): {round(time_end-time_start, 2)}s')
+        print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
     
 if __name__ == "__main__":
     Inference(
-        '/content/31.mp4', 
-        '/content/tl_l6_89k_bs24_im1408_e150.pt',
-        '/content/31_minimap.mkv',
+        '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
+        'tl_l6_89k_bs24_im1408_e150.engine',
+        '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_5000frames_road.mkv',
         minimap=True
     )
