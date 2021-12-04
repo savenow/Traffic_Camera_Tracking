@@ -119,19 +119,20 @@ class Inference():
             
             if len(self.trackDict[trackID]) > 2: 
                 
-                previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][0])
-                current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][1])
+                previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
+                current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
 
                 # Calculating homography coordinates to minimap
-                map_point = self.Calib.projection_image_to_map(self.trackDict[trackID][1])
-
-                del self.trackDict[trackID][0]
+                print(f'Current Point: {self.trackDict[trackID][-1]}')
+                map_point = self.Calib.projection_image_to_map(self.trackDict[trackID][-1])
+                print(f"Map Point: {map_point}")
+                del self.trackDict[trackID][-2]
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
-                speed_kmH = round(float((distance_metres * self.fps)) * 3.6 , 2)
+                speed_kmH = round(float((distance_metres * self.fps)/2) * 3.6 , 2)
                 output_array = np.append(detection, speed_kmH)
                 output_array = np.append(output_array, map_point)
-
+                #print(f"VelEst Output: {output_array}")
                 velocity_array.append(output_array)
             
         return velocity_array
@@ -216,7 +217,7 @@ class Inference():
                     vid_writer[i] = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer[i].write(self.frame) 
             
-            if framecount > 10000:
+            if framecount > 300:
                 vid_writer[i].release()
                 break
             
@@ -226,8 +227,8 @@ class Inference():
     
 if __name__ == "__main__":
     Inference(
-        '/media/mydisk/videos/samples/08-06-2021_18-00.mkv', 
-        'tl_l6_89k_bs24_im1408_e150.engine',
-        '/media/mydisk/videos/output_e150/08-06-2021_18-00_5min.mkv',
+        '/content/31.mp4', 
+        '/content/tl_l6_89k_bs24_im1408_e150.pt',
+        '/content/31_minimap.mkv',
         minimap=True
     )

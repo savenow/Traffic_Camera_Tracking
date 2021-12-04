@@ -23,7 +23,7 @@ class Calibration():
         ])
 
         if minimap:
-            self.homography_CameraToMap = np.load('/map_files/homography_CameraToMap.npy')
+            self.homography_CameraToMap = np.load('./map_files/homography_CameraToMap.npy')
     
     def projection_pixel_to_world(self, pixel_point):
         pixel_point = np.array([pixel_point[0], pixel_point[1], 1]).reshape(3, 1)
@@ -55,4 +55,4 @@ class Calibration():
         pt1 = pt1.reshape(3, 1)
         pt2 = np.dot(self.homography_CameraToMap, pt1)
         pt2 = pt2 / pt2[2]
-        return (int(pt2[0]), int(pt2[1]))
+        return (pt2[0], pt2[1])

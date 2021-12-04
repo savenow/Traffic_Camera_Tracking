@@ -12,12 +12,12 @@ class Visualizer():
         if minimap:
             self.showMinimap = True
             if minimap_type == 'Terrain':
-                self.Minimap = cv2.imread('/map_files/map_satellite_cropped.png')
+                self.Minimap = cv2.imread('./map_files/map_satellite_cropped.png')
             elif minimap_type == 'Road':
-                self.Minimap = cv2.imread('/map_files/map_cropped.png')
+                self.Minimap = cv2.imread('./map_files/map_cropped.png')
             else:
                 print("Wrong Minimap type...defaulting to 'Terrain'")
-                self.Minimap = cv2.imread('/map_files/map_satellite_cropped.png')
+                self.Minimap = cv2.imread('./map_files/map_satellite_cropped.png')
 
             # Location in the main image to insert minimap
             self.locationMinimap = minimap_img_location
@@ -132,6 +132,7 @@ class Visualizer():
         """
         if self.showMinimap:
             minimap_img = self.Minimap.copy()
+            minimap_points = []
     
         for detection in trackers:
             x1, y1, x2, y2 = detection[0:4]
@@ -143,7 +144,7 @@ class Visualizer():
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
-            speed = detection[-2]
+            speed = detection[-3]
             
             color = self.classID_dict[classID][1] 
             
@@ -183,9 +184,13 @@ class Visualizer():
             )
 
             if self.showMinimap:
-                minimap_point = detection[-1]
-                cv2.circle(minimap_img, tuple(minimap_point), 2, color, -1, cv2.LINE_AA)
+                minimap_points.append((int(detection[-2]), int(detection[-1]), color))
+                #print(minimap_point)
 
-                # Adding the minimap into the frame
-                frame[self.locationMinimap[0][1]:self.locationMinimap[1][1], self.locationMinimap[0][0]:self.locationMinimap[1][0]] = minimap_img
+        if self.showMinimap:
+          for point in minimap_points:
+            cv2.circle(minimap_img, tuple(point[0:2]), 2, point[2], -1, cv2.LINE_AA)
+
+          frame[self.locationMinimap[0][1]:self.locationMinimap[1][1], self.locationMinimap[0][0]:self.locationMinimap[1][0]] = minimap_img      
+        
         return frame
