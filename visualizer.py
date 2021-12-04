@@ -152,9 +152,19 @@ class Visualizer():
             )
 
             if self.showMinimap:
+                # Converting coordinates from image to map
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
+                
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
+                
+                # Plotting the text
+                textSize, _ = cv2.getTextSize(str(tracker_id), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+                rectangle_start_coord = (point_coordinates[0] + 3, point_coordinates[1] - textSize[1] - 5)
+                rectangle_end_coord = (point_coordinates[0] + textSize[0] + 3, point_coordinates[1])
+                
+                cv2.rectangle(minimap_img, rectangle_start_coord, rectangle_end_coord, color, -1)
+                cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
         
         return frame
 
@@ -225,4 +235,12 @@ class Visualizer():
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
+                # Plotting the text
+                textSize, _ = cv2.getTextSize(str(tracker_id), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
+                rectangle_start_coord = (point_coordinates[0] + 3, point_coordinates[1] - textSize[1] - 5)
+                rectangle_end_coord = (point_coordinates[0] + textSize[0] + 3, point_coordinates[1])
+                
+                cv2.rectangle(minimap_img, rectangle_start_coord, rectangle_end_coord, color, -1)
+                cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
+                
         return frame
