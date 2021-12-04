@@ -7,9 +7,9 @@ from torch._C import device
 from tqdm import tqdm
 from collections import namedtuple, defaultdict
 import torch.backends.cudnn as cudnn
+
 import sys
 sys.path.append('./yolo_v5_main_files')
-
 from models.common import DetectMultiBackend, AutoShape
 from utils.datasets import LoadImages
 from utils.torch_utils import time_sync
@@ -227,6 +227,6 @@ if __name__ == "__main__":
     Inference(
         '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
         'tl_l6_89k_bs24_im1408_e150.engine',
-        '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_5000frames_road.mkv',
+        '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_5000frames_roadBG.mkv',
         minimap=True
     )
