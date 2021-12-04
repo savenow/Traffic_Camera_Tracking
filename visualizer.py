@@ -1,7 +1,38 @@
 import cv2
+import numpy as np
+
+class Minimap():
+    def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030))):
+        self.homography_CameraToMap = np.load('./map_files/homography_CameraToMap.npy')
+       
+        if minimap_type == 'Terrain':
+            self.Minimap = cv2.imread('./map_files/map_satellite_cropped.png')
+        elif minimap_type == 'Road':
+            self.Minimap = cv2.imread('./map_files/map_cropped.png')
+        else:
+            print("Wrong Minimap type...defaulting to 'Terrain'")
+            self.Minimap = cv2.imread('./map_files/map_satellite_cropped.png')
+
+        # Location in the main image to insert minimap
+        self.locationMinimap = minimap_coords
+        
+        # Resizing the minimap accordingly
+        resize_width = self.locationMinimap[1][0] -self.locationMinimap[0][0]
+        resize_height = self.locationMinimap[1][1] - self.locationMinimap[0][1]
+
+        self.Minimap = cv2.resize(self.Minimap, (resize_width, resize_height))
+
+    def projection_image_to_map(self, image_coordinates):
+        x, y = image_coordinates
+        pt1 = np.array([x, y, 1])
+        pt1 = pt1.reshape(3, 1)
+        pt2 = np.dot(self.homography_CameraToMap, pt1)
+        pt2 = pt2 / pt2[2]
+        return (pt2[0], pt2[1])
+
 
 class Visualizer():
-    def __init__(self, minimap=False, minimap_type='Road', minimap_img_location=((1423, 710), (1865, 1030))):
+    def __init__(self, minimap=False):
         self.classID_dict = {
             0: ("Escooter", (0, 90, 255)), 
             1: ("Pedestrians", (255, 90, 0)), 
@@ -11,23 +42,9 @@ class Visualizer():
         
         if minimap:
             self.showMinimap = True
-            if minimap_type == 'Terrain':
-                self.Minimap = cv2.imread('./map_files/map_satellite_cropped.png')
-            elif minimap_type == 'Road':
-                self.Minimap = cv2.imread('./map_files/map_cropped.png')
-            else:
-                print("Wrong Minimap type...defaulting to 'Terrain'")
-                self.Minimap = cv2.imread('./map_files/map_satellite_cropped.png')
+            self.Minimap_obj = Minimap()
 
-            # Location in the main image to insert minimap
-            self.locationMinimap = minimap_img_location
             
-            # Resizing the minimap accordingly
-            resize_width = self.locationMinimap[1][0] -self.locationMinimap[0][0]
-            resize_height = self.locationMinimap[1][1] - self.locationMinimap[0][1]
-
-            self.Minimap = cv2.resize(self.Minimap, (resize_width, resize_height))
-
     def drawBBOX(self, xyxy, frame):
         """Draws just the BBOX with the class name and confidence score
 
@@ -38,8 +55,10 @@ class Visualizer():
         Returns:
             frame (image): Image with all the BBOXes
         """
-        for detection in xyxy:
-            
+        if self.showMinimap:
+            minimap_img = self.Minimap_obj.Minimap.copy()
+
+        for detection in xyxy:  
             x1, y1, x2, y2 = detection[0:4]
             x1 = int(x1)
             y1 = int(y1)
@@ -66,7 +85,11 @@ class Visualizer():
                 frame, textLabel, (x1, y1 - 5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
-        
+
+            if self.showMinimap:
+                cv2.circle(minimap_img, tuple((int((x1+x2)/2), int((y1+y2)/2))), 2, color, -1, cv2.LINE_AA)
+                frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
+
         return frame
 
     def drawTracker(self, trackers, frame):
@@ -79,6 +102,9 @@ class Visualizer():
         Returns:
             image: Image with tracker id and bbox
         """
+        if self.showMinimap:
+            minimap_img = self.Minimap_obj.Minimap.copy()
+
         for detection in trackers:
             x1, y1, x2, y2 = detection[0:4]
             x1 = int(x1)
@@ -117,6 +143,10 @@ class Visualizer():
                 frame, baseLabel, (x1, y1 - 5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
+
+            if self.showMinimap:
+                cv2.circle(minimap_img, tuple((int((x1+x2)/2), int((y1+y2)/2))), 2, color, -1, cv2.LINE_AA)
+                frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
         
         return frame
 
@@ -131,8 +161,7 @@ class Visualizer():
             image: Image with tracker id, speed(kmh) and bbox
         """
         if self.showMinimap:
-            minimap_img = self.Minimap.copy()
-            minimap_points = []
+            minimap_img = self.Minimap_obj.Minimap.copy()
     
         for detection in trackers:
             x1, y1, x2, y2 = detection[0:4]
@@ -144,7 +173,7 @@ class Visualizer():
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
-            speed = detection[-3]
+            speed = detection[-1]
             
             color = self.classID_dict[classID][1] 
             
@@ -183,14 +212,8 @@ class Visualizer():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
-            if self.showMinimap:
-                minimap_points.append((int(detection[-2]), int(detection[-1]), color))
-                #print(minimap_point)
+            if self.showMinimap:      
+                cv2.circle(minimap_img, tuple((int((x1+x2)/2), int((y1+y2)/2))), 2, color, -1, cv2.LINE_AA)
+                frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
-        if self.showMinimap:
-          for point in minimap_points:
-            cv2.circle(minimap_img, tuple(point[0:2]), 2, point[2], -1, cv2.LINE_AA)
-
-          frame[self.locationMinimap[0][1]:self.locationMinimap[1][1], self.locationMinimap[0][0]:self.locationMinimap[1][0]] = minimap_img      
-        
         return frame

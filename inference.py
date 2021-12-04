@@ -87,7 +87,7 @@ class Inference():
 
         # Camera Calibration data: Used for velocity estimation
         self.enable_minimap = minimap
-        self.Calib = Calibration(self.enable_minimap)
+        self.Calib = Calibration()
         
         # Parameters for velocity estimation
         self.velocity_frame_window = 5
@@ -122,17 +122,11 @@ class Inference():
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
 
-                # Calculating homography coordinates to minimap
-                print(f'Current Point: {self.trackDict[trackID][-1]}')
-                map_point = self.Calib.projection_image_to_map(self.trackDict[trackID][-1])
-                print(f"Map Point: {map_point}")
                 del self.trackDict[trackID][-2]
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
                 speed_kmH = round(float((distance_metres * self.fps)/2) * 3.6 , 2)
                 output_array = np.append(detection, speed_kmH)
-                output_array = np.append(output_array, map_point)
-                #print(f"VelEst Output: {output_array}")
                 velocity_array.append(output_array)
             
         return velocity_array
