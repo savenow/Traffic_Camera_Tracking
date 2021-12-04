@@ -93,7 +93,10 @@ class Visualizer():
             )
 
             if self.showMinimap:
-                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
+                # Converting coordinates from image to map
+                # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
+                _, max_y = sorted((y1, y2))
+                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
@@ -153,8 +156,10 @@ class Visualizer():
 
             if self.showMinimap:
                 # Converting coordinates from image to map
-                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
-                
+                # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
+                _, max_y = sorted((y1, y2))
+                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
+
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
                 
@@ -231,7 +236,11 @@ class Visualizer():
             )
 
             if self.showMinimap:      
-                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, (y1+y2)/2)
+                # Converting coordinates from image to map
+                # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
+                _, max_y = sorted((y1, y2))
+                point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
+                
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
