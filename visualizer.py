@@ -46,15 +46,17 @@ class Minimap():
 
 
 class Visualizer():
-    def __init__(self, minimap=False):
+    def __init__(self, minimap=False, trajectory_mode = False):
         self.classID_dict = {
             0: ("Escooter", (0, 90, 255)), 
             1: ("Pedestrians", (255, 90, 0)), 
             2: ("Cyclists", (90, 255, 0))
         }
         self.textColor = (255, 255, 255)
-        self.draw_trajectory = defaultdict(list)
-        self.trajectory_mode = False
+        
+        self.draw_trajectory_on_map = defaultdict(list)
+        self.draw_trajectory_on_img = defaultdict(list)
+
         if minimap:
             self.showMinimap = True
             self.Minimap_obj = Minimap()
@@ -108,7 +110,10 @@ class Visualizer():
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
                 pt_trajectory = self.Minimap_obj.trajectory_img_to_map((x1+x2)/2, max_y)
-                self.draw_trajectory[classID].append(tuple(pt_trajectory))
+
+                self.draw_trajectory_on_map[classID].append(tuple(pt_trajectory))
+                self.draw_trajectory_on_img[classID].append((int((x1+x2)/2), int(max_y)))
+
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
@@ -172,7 +177,9 @@ class Visualizer():
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
                 pt_trajectory = self.Minimap_obj.trajectory_img_to_map((x1+x2)/2, max_y)
-                self.draw_trajectory[classID].append(tuple(pt_trajectory))
+
+                self.draw_trajectory_on_map[classID].append(tuple(pt_trajectory))
+                self.draw_trajectory_on_img[classID].append((int((x1+x2)/2), int(max_y)))
 
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
@@ -255,7 +262,9 @@ class Visualizer():
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
                 pt_trajectory = self.Minimap_obj.trajectory_img_to_map((x1+x2)/2, max_y)
-                self.draw_trajectory[classID].append(tuple(pt_trajectory))
+
+                self.draw_trajectory_on_map[classID].append(tuple(pt_trajectory))
+                self.draw_trajectory_on_img[classID].append((int((x1+x2)/2), int(max_y)))
                 
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
@@ -270,23 +279,41 @@ class Visualizer():
                 
         return frame
 
-    def draw_All_trejectory(self, draw_trajectory, trajectory_mode):
+    def draw_All_trejectory(self, draw_trajectory_on_map, draw_trajectory_on_img, trajectory_mode, result_type= 'On_map'):
         if trajectory_mode == True:
-            img = cv2.imread('./map_files/map_satellite_cropped.png')
-            for key, value in draw_trajectory.items():
-                if key == 0:
-                    color = self.classID_dict[key][1]
-                    for v in value:
-                        img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                elif key == 1:
-                    color = self.classID_dict[key][1]
-                    for v in value:
-                        img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                elif key == 2:
-                    color = self.classID_dict[key][1]
-                    for v in value:
-                        img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-            
-            return img
+            if result_type == "On_map":
+                img = cv2.imread('./map_files/map_satellite_cropped.png')
+                for key, value in draw_trajectory_on_map.items():
+                    if key == 0:
+                        color = self.classID_dict[key][1]
+                        for v in value:
+                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                    elif key == 1:
+                        color = self.classID_dict[key][1]
+                        for v in value:
+                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                    elif key == 2:
+                        color = self.classID_dict[key][1]
+                        for v in value:
+                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                return img
+
+            elif result_type == "On_image":
+                img = cv2.imread('./map_files/image.jpeg')
+                for key, value in draw_trajectory_on_img.items():
+                    if key == 0:
+                        color = self.classID_dict[key][1]
+                        for v in value:
+                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                    elif key == 1:
+                        color = self.classID_dict[key][1]
+                        for v in value:
+                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                    elif key == 2:
+                        color = self.classID_dict[key][1]
+                        for v in value:
+                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                
+                return img
         else:
             None

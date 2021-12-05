@@ -220,8 +220,11 @@ class Inference():
                 vid_writer[i].release()
                 break
         
+        # Visualize trajectory recorded on a map or on an image.
         if self.inference_mode == 'Video':
-            img = Visualize.draw_All_trejectory(Visualize.draw_trajectory, trajectory_mode = True)  
+            # select result_type between 'On_map' and 'On_image'
+            img = Visualize.draw_All_trejectory(Visualize.draw_trajectory_on_map, Visualize.draw_trajectory_on_img, 
+                                                trajectory_mode = True, result_type= 'On_image')  
             cv2.imwrite(self.trajectory_output, img)
 
         # Print results
@@ -235,7 +238,7 @@ if __name__ == "__main__":
     Inference(
         r'E:\HiWi_project\test_1.mp4', 
         r'E:\HiWi_project\tl_l6_89k_bs24_im1408_e150.pt',
-        r'E:\HiWi_project\test_res.mp4',
-        r'E:\HiWi_project\img_traj_2.jpg',
+        r'E:\HiWi_project\test_res_1.mp4',
+        r'E:\HiWi_project\img_traj_3.jpg',
         minimap=True
     )
