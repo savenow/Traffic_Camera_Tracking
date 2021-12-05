@@ -21,7 +21,7 @@ from visualizer import Visualizer
 from calibration import Calibration
 
 class Inference():
-    def __init__(self, input, model_weights, output=None, minimap=False, imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None,trajectory_output=False, minimap=False, imgSize=[1408, 1408]):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -72,6 +72,11 @@ class Inference():
         else:
             self.output = output
         
+        if trajectory_output == None:
+            self.trajectory_output = self.input.split('/')[-1]
+        else:
+            self.trajectory_output = trajectory_output
+
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
         self.stride, self.names, self.pt, self.jit, self.onnx, self.engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
@@ -90,7 +95,6 @@ class Inference():
         self.Calib = Calibration()
         
         # Parameters for velocity estimation
-        self.velocity_frame_window = 5
         self.trackDict = defaultdict(list)
         self.trackCount = 0
 
@@ -215,7 +219,11 @@ class Inference():
             if framecount > 5000:
                 vid_writer[i].release()
                 break
-            
+        
+        if self.inference_mode == 'Video':
+            img = Visualize.draw_All_trejectory(Visualize.draw_trajectory, trajectory_mode = True)  
+            cv2.imwrite(self.trajectory_output, img)
+
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *self.img_size)}' % t)
@@ -225,8 +233,9 @@ class Inference():
     
 if __name__ == "__main__":
     Inference(
-        '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
-        'tl_l6_89k_bs24_im1408_e150.engine',
-        '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_5000frames_roadBG.mkv',
+        r'E:\HiWi_project\test_1.mp4', 
+        r'E:\HiWi_project\tl_l6_89k_bs24_im1408_e150.pt',
+        r'E:\HiWi_project\test_res.mp4',
+        r'E:\HiWi_project\img_traj_2.jpg',
         minimap=True
     )

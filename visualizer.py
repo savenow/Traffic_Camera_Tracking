@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from collections import defaultdict
 
 class Minimap():
     def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030))):
@@ -36,6 +37,13 @@ class Minimap():
         pt2 = pt2 / pt2[2]
         return (int(pt2[0]*self.width_scaling), int(pt2[1]*self.height_scaling))
 
+    def trajectory_img_to_map(self,x,y):
+        pt1 = np.array([x, y, 1])
+        pt1 = pt1.reshape(3, 1)
+        pt2 = np.dot(self.homography_CameraToMap, pt1)
+        pt2 = pt2 / pt2[2]
+        return (int(pt2[0]), int(pt2[1]))
+
 
 class Visualizer():
     def __init__(self, minimap=False):
@@ -45,10 +53,12 @@ class Visualizer():
             2: ("Cyclists", (90, 255, 0))
         }
         self.textColor = (255, 255, 255)
-        
+        self.draw_trajectory = defaultdict(list)
+        self.trajectory_mode = False
         if minimap:
             self.showMinimap = True
             self.Minimap_obj = Minimap()
+            
 
             
     def drawBBOX(self, xyxy, frame):
@@ -97,6 +107,8 @@ class Visualizer():
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
+                pt_trajectory = self.Minimap_obj.trajectory_img_to_map((x1+x2)/2, max_y)
+                self.draw_trajectory[classID].append(tuple(pt_trajectory))
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
@@ -159,6 +171,8 @@ class Visualizer():
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
+                pt_trajectory = self.Minimap_obj.trajectory_img_to_map((x1+x2)/2, max_y)
+                self.draw_trajectory[classID].append(tuple(pt_trajectory))
 
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
@@ -240,6 +254,8 @@ class Visualizer():
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
+                pt_trajectory = self.Minimap_obj.trajectory_img_to_map((x1+x2)/2, max_y)
+                self.draw_trajectory[classID].append(tuple(pt_trajectory))
                 
                 cv2.circle(minimap_img, tuple(point_coordinates), 3, color, -1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
@@ -253,3 +269,24 @@ class Visualizer():
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
                 
         return frame
+
+    def draw_All_trejectory(self, draw_trajectory, trajectory_mode):
+        if trajectory_mode == True:
+            img = cv2.imread('./map_files/map_satellite_cropped.png')
+            for key, value in draw_trajectory.items():
+                if key == 0:
+                    color = self.classID_dict[key][1]
+                    for v in value:
+                        img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                elif key == 1:
+                    color = self.classID_dict[key][1]
+                    for v in value:
+                        img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+                elif key == 2:
+                    color = self.classID_dict[key][1]
+                    for v in value:
+                        img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
+            
+            return img
+        else:
+            None
