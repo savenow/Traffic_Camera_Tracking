@@ -21,7 +21,7 @@ from visualizer import Visualizer
 from calibration import Calibration
 
 class Inference():
-    def __init__(self, input, model_weights, output=None,trajectory_output=False, minimap=False, imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None,trajectory_output=None, minimap=False, imgSize=[1408, 1408]):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -224,7 +224,7 @@ class Inference():
         if self.inference_mode == 'Video':
             # select result_type between 'On_map' and 'On_image'
             img = Visualize.draw_All_trejectory(Visualize.draw_trajectory_on_map, Visualize.draw_trajectory_on_img, 
-                                                trajectory_mode = True, result_type= 'On_image')  
+                                                trajectory_mode = True, result_type= 'On_map')  
             cv2.imwrite(self.trajectory_output, img)
 
         # Print results
