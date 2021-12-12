@@ -21,7 +21,7 @@ from visualizer import Visualizer
 from calibration import Calibration
 
 class Inference():
-    def __init__(self, input, model_weights, output=None,trajectory_output=None, minimap=False, imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None,trajectory_output=None, minimap=False, trajectory_mode=False, imgSize=[1408, 1408]):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -77,6 +77,11 @@ class Inference():
         else:
             self.trajectory_output = trajectory_output
 
+        if trajectory_mode:
+            self.showTrajectory = True
+        else:
+            self.showTrajectory = False
+
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
         self.stride, self.names, self.pt, self.jit, self.onnx, self.engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
@@ -92,11 +97,11 @@ class Inference():
 
         # Camera Calibration data: Used for velocity estimation
         self.enable_minimap = minimap
+        self.enable_trajectory = trajectory_mode
         self.Calib = Calibration()
         
         # Parameters for velocity estimation
         self.trackDict = defaultdict(list)
-        self.trackCount = 0
 
         self.runInference()
     
@@ -105,7 +110,6 @@ class Inference():
             dets = []
             for items in pred:
                 dets.append(items[:].tolist())
-            self.trackCount += 1
         
             dets = np.array(dets)
             self.tracker = self.Objtracker.update(dets)
@@ -140,7 +144,7 @@ class Inference():
         bs = 1
         vid_path, vid_writer = [None] * bs, [None] * bs
 
-        Visualize = Visualizer(self.enable_minimap)
+        Visualize = Visualizer(self.enable_minimap, self.enable_trajectory)
         dt, seen = [0.0, 0.0, 0.0], 0
         framecount = 0
         time_start = time_sync()
@@ -221,7 +225,7 @@ class Inference():
                 break
         
         # Visualize trajectory recorded on a map or on an image.
-        if self.inference_mode == 'Video':
+        if self.inference_mode == 'Video' and self.showTrajectory == True:
             # select result_type between 'On_map' and 'On_image'
             img = Visualize.draw_All_trejectory(Visualize.draw_trajectory_on_map, Visualize.draw_trajectory_on_img, 
                                                 trajectory_mode = True, result_type= 'On_map')  
@@ -237,8 +241,9 @@ class Inference():
 if __name__ == "__main__":
     Inference(
         r'E:\HiWi_project\test_1.mp4', 
-        r'E:\HiWi_project\tl_l6_89k_bs24_im1408_e150.pt',
-        r'E:\HiWi_project\test_res_1.mp4',
-        r'E:\HiWi_project\img_traj_3.jpg',
-        minimap=True
+        r'E:\HiWi_project\tl_s6_89k_bs32_im1408_e300.pt',
+        r'E:\HiWi_project\results\test_res_6.mp4',
+        r'E:\HiWi_project\results\img_traj_6.jpg',
+        minimap=True,
+        trajectory_mode=False
     )
