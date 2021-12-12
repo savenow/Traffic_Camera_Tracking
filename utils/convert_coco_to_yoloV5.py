@@ -128,9 +128,10 @@ def copy_images_labels(data, img_dir, label_dir):
         new_img_name = f'frame_{item[0]}.png'
         os.rename(f"{img_dir}/{item[1][-16:]}", f"{img_dir}/{new_img_name}")
 
-        label = f'{label_dir}/frame_{item[0]}.txt'
-        with open(label, 'w+') as file:
-            file.writelines(item[2])
+        if item[2] != '':
+            label = f'{label_dir}/frame_{item[0]}.txt'
+            with open(label, 'w+') as file:
+                file.writelines(item[2])
 
 
 def main(main_path, files_path, train_split):
@@ -247,8 +248,8 @@ def main(main_path, files_path, train_split):
 
                 # Not considering background images without any instances for this model
                 # THIS SHOULD BE CHANGED DEPENDING HOW THE MODEL TRAINS
-                if anno_string != '':
-                    data_list.append((frame_number, frame_adjusted_img_filename, anno_string))
+                #if anno_string != '':
+                data_list.append((frame_number, frame_adjusted_img_filename, anno_string))
 
                 frame_number += 1
             
@@ -286,7 +287,7 @@ def main(main_path, files_path, train_split):
 # These paths must be definitely changed according to your own system
 # I (prefer) recommend using absolute paths to avoid confusions
 clips_path = os.path.abspath('/media/mydisk/videos/input_new')
-output_path = os.path.abspath('/media/mydisk/videos/training_data')
-train_valid_split = 0.85    # 85% is in train and 15% is in validation
+output_path = os.path.abspath('/media/mydisk/videos/training_data_new')
+train_valid_split = 0.90    # 85% is in train and 15% is in validation
 
 main(output_path, clips_path, train_valid_split)
