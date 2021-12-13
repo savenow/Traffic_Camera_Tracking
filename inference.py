@@ -21,7 +21,7 @@ from visualizer import Visualizer
 from calibration import Calibration
 
 class Inference():
-    def __init__(self, input, model_weights, output=None,trajectory_output=None, minimap=False, trajectory_mode=False, imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None, trajectory_output=None, minimap=False, trajectory_mode=False,  imgSize=[1408, 1408]):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -220,16 +220,16 @@ class Inference():
                     vid_writer[i] = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer[i].write(self.frame) 
             
-            if framecount > 5000:
+            if framecount > 10000:
                 vid_writer[i].release()
                 break
         
         # Visualize trajectory recorded on a map or on an image.
-        if self.inference_mode == 'Video' and self.showTrajectory == True:
-            # select result_type between 'On_map' and 'On_image'
-            img = Visualize.draw_All_trejectory(Visualize.draw_trajectory_on_map, Visualize.draw_trajectory_on_img, 
-                                                trajectory_mode = True, result_type= 'On_map')  
-            cv2.imwrite(self.trajectory_output, img)
+        #if self.inference_mode == 'Video' and self.showTrajectory == True:
+        #    # select result_type between 'On_map' and 'On_image'
+        #    img = Visualize.draw_All_trejectory(Visualize.draw_trajectory_on_map, Visualize.draw_trajectory_on_img, 
+        #                                        trajectory_mode = False, result_type= 'On_map')  
+        #    cv2.imwrite(self.trajectory_output, img)
 
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -243,7 +243,9 @@ if __name__ == "__main__":
         r'E:\HiWi_project\test_1.mp4', 
         r'E:\HiWi_project\tl_s6_89k_bs32_im1408_e300.pt',
         r'E:\HiWi_project\results\test_res_6.mp4',
-        r'E:\HiWi_project\results\img_traj_6.jpg',
         minimap=True,
         trajectory_mode=False
     )
+        # '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
+        # 'tl_s6_89k_bs32_im1408_e300.pt',
+        # '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_s6.mkv',
