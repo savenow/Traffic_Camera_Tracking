@@ -2,6 +2,8 @@ import torch
 import cv2
 import numpy as np
 import os
+import argparse
+from pathlib import Path
 import math
 from torch._C import device
 from tqdm import tqdm
@@ -13,15 +15,21 @@ sys.path.append('./yolo_v5_main_files')
 from models.common import DetectMultiBackend, AutoShape
 from utils.datasets import LoadImages
 from utils.torch_utils import time_sync
-from utils.general import non_max_suppression, scale_coords, check_img_size
+from utils.general import LOGGER, non_max_suppression, scale_coords, check_img_size, print_args
 from hubconf import custom
 
 from sort_yoloV5 import Sort
 from visualizer import Visualizer
 from calibration import Calibration
 
+FILE = Path(__file__).resolve()
+ROOT = FILE.parents[0]
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
+
 class Inference():
-    def __init__(self, input, model_weights, output=None, trajectory_output=None, minimap=False, trajectory_mode=False,  imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None, trj_output=None, minimap=False, trj_mode=False,  imgSize=[1408, 1408]):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -72,12 +80,12 @@ class Inference():
         else:
             self.output = output
         
-        if trajectory_output == None:
+        if trj_output == None:
             self.trajectory_output = self.input.split('/')[-1]
         else:
-            self.trajectory_output = trajectory_output
+            self.trajectory_output = trj_output
 
-        if trajectory_mode:
+        if trj_mode:
             self.showTrajectory = True
         else:
             self.showTrajectory = False
@@ -97,7 +105,7 @@ class Inference():
 
         # Camera Calibration data: Used for velocity estimation
         self.enable_minimap = minimap
-        self.enable_trajectory = trajectory_mode
+        self.enable_trajectory = trj_mode
         self.Calib = Calibration()
         
         # Parameters for velocity estimation
@@ -238,14 +246,37 @@ class Inference():
         print(f'Total time for inference (including pre and post-processing): {round(time_end-time_start, 2)}s')
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
     
+    def parse_opt():
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--input', type=str, default=None, help=['path to input file(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
+        parser.add_argument('--model_weights', type=str, default=None, help='model\'s weights path(s)')
+        parser.add_argument('--output', type=str, default=None, help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
+        parser.add_argument('--trj_output', type=str, default=None, help=['path to save the trjectory result(s)', '.png/.jpg/.jpeg'])
+        parser.add_argument('--minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
+        parser.add_argument('--trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
+        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1408, 1408], help='inference size h,w')
+        opt = parser.parse_args()
+        opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
+        print_args(FILE.stem, opt)
+        return opt
+
+    def main(opt):
+        Inference(**vars(opt))
+
+    
 if __name__ == "__main__":
-    Inference(
-        r'E:\HiWi_project\test_1.mp4', 
-        r'E:\HiWi_project\tl_s6_89k_bs32_im1408_e300.pt',
-        r'E:\HiWi_project\results\test_res_6.mp4',
-        minimap=True,
-        trajectory_mode=False
-    )
-        # '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
-        # 'tl_s6_89k_bs32_im1408_e300.pt',
-        # '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_s6.mkv',
+
+    opt = Inference.parse_opt()
+    Inference.main(opt)
+
+
+    # Inference(
+    #     r'E:\HiWi_project\test_1.mp4', 
+    #     r'E:\HiWi_project\tl_s6_89k_bs32_im1408_e300.pt',
+    #     r'E:\HiWi_project\results\test_res_6.mp4',
+    #     minimap=True,
+    #     trajectory_mode=False
+    # )
+    #     # '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
+    #     # 'tl_s6_89k_bs32_im1408_e300.pt',
+    #     # '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_s6.mkv',
