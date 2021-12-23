@@ -29,7 +29,9 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class Inference():
-    def __init__(self, input, model_weights, output=None, trj_output=None, minimap=False, trj_mode=False,  imgSize=[1408, 1408]):        
+    def __init__(self, input, model_weights, output=None, trj_output=None, 
+                minimap=False, trj_mode=False,  imgSize=[1408, 1408],
+                update_rate = 100):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -41,6 +43,7 @@ class Inference():
         self.device = torch.device('cuda:0')
         self.half = True
         cudnn.benchmark = True
+        self.update_rate = update_rate
         
         # Checking input
         if os.path.isfile(input):
@@ -131,10 +134,9 @@ class Inference():
             
 
             trackID = int(detection[9])
-            self.trackDict[trackID].append((center_x, center_y))
+            self.trackDict[trackID].append((int(center_x), int(center_y)))
             
             if len(self.trackDict[trackID]) > 2: 
-                
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
 
@@ -144,7 +146,7 @@ class Inference():
                 speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
                 output_array = np.append(detection, speed_kmH)
                 velocity_array.append(output_array)
-            
+
         return velocity_array
 
     def runInference(self):
@@ -207,14 +209,14 @@ class Inference():
                 # Velocity Estimation
                 velocity_estimation = []
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
-                
+
                 if calculated_velocity:
-                    self.frame = Visualize.drawAll(calculated_velocity, im0)
+                    self.frame = Visualize.drawAll(calculated_velocity, im0, self.update_rate)
                 elif len(self.tracker) > 0:
-                    self.frame = Visualize.drawTracker(self.tracker, im0)
+                    self.frame = Visualize.drawTracker(self.tracker, im0, self.update_rate)
                 elif len(pred) > 0:
-                    self.frame = Visualize.drawBBOX(pred[0], im0)
-       
+                    self.frame = Visualize.drawBBOX(pred[0], im0, self.update_rate)
+    
                 if vid_path[i] != self.output:  # new video
                     vid_path[i] = self.output
                     if isinstance(vid_writer[i], cv2.VideoWriter):
@@ -255,6 +257,7 @@ class Inference():
         parser.add_argument('--minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1408, 1408], help='inference size h,w')
+        parser.add_argument('--update_rate', type=int, default=100, help='provide a number to update a trajectory after certain frames')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
