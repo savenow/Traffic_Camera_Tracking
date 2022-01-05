@@ -30,7 +30,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class Inference():
     def __init__(self, input, model_weights, output=None, trj_output=None, 
-                minimap=False, trj_mode=False,  imgSize=[1408, 1408],
+                minimap=False, trj_mode=False,  imgSize=[1920, 1920],
                 update_rate = 100):        
         # Inference Params
         self.img_size = imgSize
@@ -70,6 +70,14 @@ class Inference():
             elif model_weights[-7:] == '.engine':
                 self.model_weights = model_weights
                 self.inference_backend = 'TensorRT'
+
+                if self.img_size == [1920, 1920]:
+                    self.img_size = [1408, 1408]
+                elif self.img_size == [1280, 1280]:
+                    self.img_size = [960, 960]
+                else:
+                    print("For running inference using TensorRT, please modify 'img_size' variable in inference.py appropriately")
+                    exit()
             else:
                 print(f"Invalid Weights file. {model_weights} does not end with '.engine' or '.pt'")
                 exit(-1)
@@ -256,7 +264,7 @@ class Inference():
         parser.add_argument('--trj_output', type=str, default=None, help=['path to save the trjectory result(s)', '.png/.jpg/.jpeg'])
         parser.add_argument('--minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
-        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1408, 1408], help='inference size h,w')
+        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
         parser.add_argument('--update_rate', type=int, default=100, help='provide a number to update a trajectory after certain frames')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
