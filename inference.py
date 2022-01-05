@@ -31,7 +31,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 class Inference():
     def __init__(self, input, model_weights, output=None, trj_output=None, 
                 minimap=False, trj_mode=False,  imgSize=[1920, 1920],
-                update_rate = 100):        
+                update_rate = 1):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -100,6 +100,14 @@ class Inference():
             self.showTrajectory = True
         else:
             self.showTrajectory = False
+
+        # setting limit for update_rate
+        if self.update_rate > self.fps:
+            self.update_rate = self.fps
+        elif self.update_rate <= 0:
+            self.update_rate = int(self.fps/2)
+        else:
+            self.update_rate = update_rate
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
@@ -265,7 +273,7 @@ class Inference():
         parser.add_argument('--minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
-        parser.add_argument('--update_rate', type=int, default=100, help='provide a number to update a trajectory after certain frames')
+        parser.add_argument('--update_rate', type=int, default=1, help='provide a number to update a trajectory after certain frames')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)

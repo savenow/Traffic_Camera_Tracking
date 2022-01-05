@@ -187,14 +187,15 @@ class Visualizer():
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
-                self.realtime_trajectory[classID].append(tuple(point_coordinates))
-
+            
+                if self.count % update_rate == 0:
+                    self.realtime_trajectory[classID].append(tuple(point_coordinates))
                 frame = self.draw_realtime_trajectory_1(self.realtime_trajectory, minimap_img, frame)
         
-        # update default dict after certain numbe rof frame count.
-        if self.showMinimap and (self.count == update_rate):
+        # update default dict after certain number of frame count.
+        if self.showMinimap and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
-                del self.realtime_trajectory[k]
+                del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
 
             return frame
@@ -264,8 +265,9 @@ class Visualizer():
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
-                self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
 
+                if self.count % update_rate == 0:
+                    self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
                 frame = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img, frame)
                 
                 # Plotting the text
@@ -277,9 +279,9 @@ class Visualizer():
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
         
         # update default dict after certain numbe rof frame count.
-        if self.showMinimap and (self.count == update_rate):
+        if self.showMinimap and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
-                del self.realtime_trajectory[k]
+                del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
 
         return frame
@@ -359,8 +361,9 @@ class Visualizer():
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
-                self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
 
+                if self.count % update_rate == 0:
+                    self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
                 frame = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img, frame)
                 
                 # Plotting the text
@@ -372,9 +375,9 @@ class Visualizer():
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
         
         # update default dict after certain numbe rof frame count.
-        if self.showMinimap and (self.count == update_rate):
+        if self.showMinimap and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
-                del self.realtime_trajectory[k]
+                del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
 
         return frame
