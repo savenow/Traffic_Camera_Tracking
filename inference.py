@@ -96,10 +96,11 @@ class Inference():
         else:
             self.trajectory_output = trj_output
 
-        if trj_mode:
-            self.showTrajectory = True
-        else:
-            self.showTrajectory = False
+        # if trj_mode:
+        #     self.showTrajectory = True
+        # else:
+        #     self.showTrajectory = False
+        self.showTrajectory = trj_mode
 
         # setting limit for update_rate
         if self.update_rate > self.fps:
@@ -146,8 +147,7 @@ class Inference():
     def VelocityEstimation(self, velocity_array):    
         for detection in self.tracker:
             center_x = (detection[0] + detection[1])/2
-            center_y = (detection[2] + detection[3])/2
-            
+            center_y = (detection[2] + detection[3])/2           
 
             trackID = int(detection[9])
             self.trackDict[trackID].append((int(center_x), int(center_y)))
@@ -284,18 +284,5 @@ class Inference():
 
     
 if __name__ == "__main__":
-
     opt = Inference.parse_opt()
     Inference.main(opt)
-
-
-    # Inference(
-    #     r'E:\HiWi_project\test_1.mp4', 
-    #     r'E:\HiWi_project\tl_s6_89k_bs32_im1408_e300.pt',
-    #     r'E:\HiWi_project\results\test_res_6.mp4',
-    #     minimap=True,
-    #     trajectory_mode=False
-    # )
-    #     # '/media/mydisk/videos/samples/re-encode/08-06-2021_18-00.mkv', 
-    #     # 'tl_s6_89k_bs32_im1408_e300.pt',
-    #     # '/media/mydisk/videos/output_e150/minimap/08-06-2021_18-00_s6.mkv',
