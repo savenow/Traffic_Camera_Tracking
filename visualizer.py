@@ -45,7 +45,6 @@ class Minimap():
         return (int(pt2[0]), int(pt2[1]))
 
 
-
 class Visualizer():
     def __init__(self, minimap=False, trajectory_mode = False):
         self.classID_dict = {
@@ -63,12 +62,14 @@ class Visualizer():
         if minimap:
             self.showMinimap = True
             self.Minimap_obj = Minimap()
-        else:self.showMinimap = False
+        else:
+            self.showMinimap = False
 
         if trajectory_mode:
             self.showTrajectory = True
             self.Minimap_obj = Minimap()
-        else:self.showTrajectory = False
+        else:
+            self.showTrajectory = False
 
             
     def draw_realtime_trajectory_1(self, realtime_trajectory, trajec_img, frame):   
@@ -85,24 +86,15 @@ class Visualizer():
 
         if realtime_trajectory != None:
             for key, value in realtime_trajectory.items():
-                if key == 0:
+                if key in [0, 1, 2]:
                     color = self.classID_dict[key][1]
                     for v in value:
                         cv2.circle(trajec_img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
                         frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = trajec_img
-                if key == 1:
-                    color = self.classID_dict[key][1]
-                    for v in value:
-                        cv2.circle(trajec_img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                        frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = trajec_img
-                if key == 2:
-                    color = self.classID_dict[key][1]
-                    for v in value:
-                        cv2.circle(trajec_img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                        frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = trajec_img
-        
+               
             return frame
-        else: pass
+        else: 
+            pass
     
     def draw_realtime_trajectory_2(self, realtime_trajectory, trajec_img, frame):
 
@@ -132,7 +124,8 @@ class Visualizer():
             except: pass
 
             return frame
-        else: pass
+        else: 
+            pass
             
     def drawBBOX(self, xyxy, frame, update_rate):
         """Draws just the BBOX with the class name and confidence score

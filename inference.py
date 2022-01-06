@@ -96,10 +96,6 @@ class Inference():
         else:
             self.trajectory_output = trj_output
 
-        # if trj_mode:
-        #     self.showTrajectory = True
-        # else:
-        #     self.showTrajectory = False
         self.showTrajectory = trj_mode
 
         # setting limit for update_rate
@@ -168,10 +164,10 @@ class Inference():
     def runInference(self):
         dataset = LoadImages(self.input, img_size=self.img_size, stride=self.stride, auto=self.pt and not self.jit)
         bs = 1
-        vid_path, vid_writer = [None] * bs, [None] * bs
+        vid_path, vid_writer = None, None
 
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory)
-        dt, seen = [0.0, 0.0, 0.0], 0
+        dt, seen = [0.0, 0.0, 0.0, 0.0], 0
         framecount = 0
         time_start = time_sync()
         for path, im, im0, vid_cap, s in dataset:
@@ -194,7 +190,8 @@ class Inference():
 
             # NMS
             pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, self.classes, self.agnostic_nms, max_det=self.max_det)
-            dt[2] += time_sync() - t3
+            t4 = time_sync()
+            dt[2] += t4 - t3
 
             # Process predictions
             for i, det in enumerate(pred):  # per image
@@ -209,9 +206,7 @@ class Inference():
                     # Print results
                     for c in det[:, -1].unique():
                         n = (det[:, -1] == c).sum()  # detections per class
-                        s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
-                print(f'{s}Done. ({1/(t3 - t2):.3f}fps)')
+                        s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string    
             
             # Save the images or videos
             if self.inference_mode == 'SingleImage':
@@ -232,34 +227,30 @@ class Inference():
                     self.frame = Visualize.drawTracker(self.tracker, im0, self.update_rate)
                 elif len(pred) > 0:
                     self.frame = Visualize.drawBBOX(pred[0], im0, self.update_rate)
-    
-                if vid_path[i] != self.output:  # new video
-                    vid_path[i] = self.output
-                    if isinstance(vid_writer[i], cv2.VideoWriter):
-                        vid_writer[i].release()  # release previous video writer
+                t5 = time_sync()
+                dt[3] += t5 - t4
+                print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
+
+                if vid_path != self.output:  # new video
+                    vid_path = self.output
+                    if isinstance(vid_writer, cv2.VideoWriter):
+                        vid_writer.release()  # release previous video writer
                     if vid_cap:  # video
                         w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     else:  
-                        w, h = im0.shape[1], im0.shape[0]
-                        
-                    vid_writer[i] = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
-                vid_writer[i].write(self.frame) 
+                        w, h = im0.shape[1], im0.shape[0]      
+                    vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
+                vid_writer.write(self.frame) 
+                
             
-            if framecount > 10000:
-                vid_writer[i].release()
+            if framecount > 1000:
+                vid_writer.release()
                 break
         
-        # Visualize trajectory recorded on a map or on an image.
-        #if self.inference_mode == 'Video' and self.showTrajectory == True:
-        #    # select result_type between 'On_map' and 'On_image'
-        #    img = Visualize.draw_All_trejectory(Visualize.draw_trajectory_on_map, Visualize.draw_trajectory_on_img, 
-        #                                        trajectory_mode = False, result_type= 'On_map')  
-        #    cv2.imwrite(self.trajectory_output, img)
-
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
-        print(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *self.img_size)}' % t)
+        print(f'Speed: %.1fms pre-process, %.1fms inference, %.3fms NMS per image at shape {(1, 3, *im.shape[2:])}, %.1fms Post-processing' % t)
         time_end = time_sync()
         print(f'Total time for inference (including pre and post-processing): {round(time_end-time_start, 2)}s')
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
