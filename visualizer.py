@@ -30,21 +30,11 @@ class Minimap():
         self.height_scaling = resize_height/original_height
 
     def projection_image_to_map(self, x, y):
-        #x, y = image_coordinates
         pt1 = np.array([x, y, 1])
         pt1 = pt1.reshape(3, 1)
         pt2 = np.dot(self.homography_CameraToMap, pt1)
         pt2 = pt2 / pt2[2]
         return (int(pt2[0]*self.width_scaling), int(pt2[1]*self.height_scaling))
-
-    def trajectory_on_real_map(self,x,y):
-        return self.projection_image_to_map(x, y)
-        # pt1 = np.array([x, y, 1])
-        # pt1 = pt1.reshape(3, 1)
-        # pt2 = np.dot(self.homography_CameraToMap, pt1)
-        # pt2 = pt2 / pt2[2]
-        # return (int(pt2[0]), int(pt2[1]))
-
 
 class Visualizer():
     def __init__(self, minimap=False, trajectory_mode=False):
@@ -260,7 +250,7 @@ class Visualizer():
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
         
-        # update default dict after certain numbe rof frame count.
+        # update default dict after certain number of frame count.
         if self.showTrajectory and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
                 del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
@@ -354,7 +344,7 @@ class Visualizer():
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
                 frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
 
-        # update default dict after certain numbe rof frame count.
+        # update default dict after certain number of frame count.
         if self.showTrajectory and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
                 del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]

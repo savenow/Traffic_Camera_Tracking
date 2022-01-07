@@ -101,10 +101,13 @@ class Inference():
         # setting limit for update_rate
         if self.update_rate > self.fps:
             self.update_rate = self.fps
+            print(f"[INFO] update_rate exceeds the video fps. Hence, update_rate is set to {self.update_rates} per frame")
         elif self.update_rate <= 0:
             self.update_rate = int(self.fps/2)
+            print(f"[INFO] update_rate cannot be negative or 0. Hence, update_rate is set to {self.update_rate}")
         else:
             self.update_rate = update_rate
+            print(f"[INFO] update_rate is set to {self.update_rate}")
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
@@ -189,25 +192,24 @@ class Inference():
                 pred = pred[0]
 
             # NMS
-            pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, self.classes, self.agnostic_nms, max_det=self.max_det)
+            pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, self.classes, self.agnostic_nms, max_det=self.max_det)[0]
             t4 = time_sync()
             dt[2] += t4 - t3
 
             # Process predictions
-            for i, det in enumerate(pred):  # per image
-                seen += 1
+            seen += 1
 
-                s += '%gx%g ' % im.shape[2:] 
+            s += '%gx%g ' % im.shape[2:] 
 
-                if len(det):
-                    # Rescale boxes from img_size to im0 size
-                    det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+            if len(pred):
+                # Rescale boxes from img_size to im0 size
+                pred[:, :4] = scale_coords(im.shape[2:], pred[:, :4], im0.shape).round()
 
-                    # Print results
-                    for c in det[:, -1].unique():
-                        n = (det[:, -1] == c).sum()  # detections per class
-                        s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string    
-            
+                # Print results
+                for c in pred[:, -1].unique():
+                    n = (pred[:, -1] == c).sum()  # detections per class
+                    s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string    
+        
             # Save the images or videos
             if self.inference_mode == 'SingleImage':
                 self.frame = Visualize.drawBBOX(pred[0], im0)
@@ -215,7 +217,7 @@ class Inference():
             
             elif self.inference_mode == 'Video':
                 # Update the tracker
-                self.UpdateTracker(pred[0])
+                self.UpdateTracker(pred)
                 
                 # Velocity Estimation
                 velocity_estimation = []
@@ -226,25 +228,20 @@ class Inference():
                 elif len(self.tracker) > 0:
                     self.frame = Visualize.drawTracker(self.tracker, im0, self.update_rate)
                 elif len(pred) > 0:
-                    self.frame = Visualize.drawBBOX(pred[0], im0, self.update_rate)
+                    self.frame = Visualize.drawBBOX(pred, im0, self.update_rate)
+                  
                 t5 = time_sync()
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
 
                 if vid_path != self.output:  # new video
                     vid_path = self.output
-                    if isinstance(vid_writer, cv2.VideoWriter):
-                        vid_writer.release()  # release previous video writer
-                    if vid_cap:  # video
-                        w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                        h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    else:  
-                        w, h = im0.shape[1], im0.shape[0]      
+                    w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
-                vid_writer.write(self.frame) 
-                
+                vid_writer.write(self.frame)      
             
-            if framecount > 1000:
+            if framecount > 10000:
                 vid_writer.release()
                 break
         
