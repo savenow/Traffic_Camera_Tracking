@@ -38,15 +38,16 @@ class Minimap():
         return (int(pt2[0]*self.width_scaling), int(pt2[1]*self.height_scaling))
 
     def trajectory_on_real_map(self,x,y):
-        pt1 = np.array([x, y, 1])
-        pt1 = pt1.reshape(3, 1)
-        pt2 = np.dot(self.homography_CameraToMap, pt1)
-        pt2 = pt2 / pt2[2]
-        return (int(pt2[0]), int(pt2[1]))
+        return self.projection_image_to_map(x, y)
+        # pt1 = np.array([x, y, 1])
+        # pt1 = pt1.reshape(3, 1)
+        # pt2 = np.dot(self.homography_CameraToMap, pt1)
+        # pt2 = pt2 / pt2[2]
+        # return (int(pt2[0]), int(pt2[1]))
 
 
 class Visualizer():
-    def __init__(self, minimap=False, trajectory_mode = False):
+    def __init__(self, minimap=False, trajectory_mode=False):
         self.classID_dict = {
             0: ("Escooter", (0, 90, 255)), 
             1: ("Pedestrians", (255, 90, 0)), 
@@ -54,27 +55,20 @@ class Visualizer():
         }
         self.textColor = (255, 255, 255)
         
-        self.draw_trajectory_on_map = defaultdict(list)
         self.realtime_trajectory = defaultdict(list)
-        self.draw_trajectory_on_img = defaultdict(list)
         self.count = 0  # variable to update default_dict after certain number of count
 
         if minimap:
+            print(f"[INFO] Minimap is set to {minimap}")
             self.showMinimap = True
             self.Minimap_obj = Minimap()
+            self.showTrajectory = trajectory_mode
         else:
             self.showMinimap = False
-
-        if trajectory_mode:
-            self.showTrajectory = True
-            self.Minimap_obj = Minimap()
-        else:
-            self.showTrajectory = False
-
             
-    def draw_realtime_trajectory_1(self, realtime_trajectory, trajec_img, frame):   
+    def draw_realtime_trajectory_1(self, realtime_trajectory, trajec_img):   
 
-        """This function is only useful when deawBBOX function is used.
+        """This function is only useful when drawBBOX function is used.
            Args:
                 realtime_trajectory : default dictionary having list of all BBOX's center points
                 traject_img : minimap image on which trajectories are drawn
@@ -90,13 +84,11 @@ class Visualizer():
                     color = self.classID_dict[key][1]
                     for v in value:
                         cv2.circle(trajec_img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                        frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = trajec_img
-               
-            return frame
+            return trajec_img
         else: 
             pass
     
-    def draw_realtime_trajectory_2(self, realtime_trajectory, trajec_img, frame):
+    def draw_realtime_trajectory_2(self, realtime_trajectory, trajec_img):
 
         """This function is only useful when drawTracker and drawAll functions are used.
         
@@ -117,13 +109,13 @@ class Visualizer():
                     if len(v)>2:
                         color = self.classID_dict[v[2]][1]
                         cv2.circle(trajec_img, (int(v[0]),int(v[1])), 1, color, -1, cv2.LINE_AA)
-                        frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = trajec_img
+                        
                     else: var = key
 
             try: del realtime_trajectory[var]
             except: pass
 
-            return frame
+            return trajec_img
         else: 
             pass
             
@@ -169,24 +161,23 @@ class Visualizer():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
-            if self.showTrajectory:
-                _, max_y = sorted((y1, y2))
-                pt_trajectory = self.Minimap_obj.trajectory_on_real_map((x1+x2)/2, max_y)
-                self.draw_trajectory_on_map[classID].append(tuple(pt_trajectory))
-                self.draw_trajectory_on_img[classID].append((int((x1+x2)/2), int(max_y)))
-
             if self.showMinimap:
                 # Converting coordinates from image to map
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
             
-                if self.count % update_rate == 0:
-                    self.realtime_trajectory[classID].append(tuple(point_coordinates))
-                frame = self.draw_realtime_trajectory_1(self.realtime_trajectory, minimap_img, frame)
-        
+                if self.showTrajectory:
+                  if self.count % update_rate == 0:
+                      self.realtime_trajectory[classID].append((point_coordinates[0], point_coordinates[1], classID))
+                  minimap_img = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img)
+                else:
+                  cv2.circle(minimap_img, point_coordinates, 1, color, -1, cv2.LINE_AA)
+                
+                frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
+                  
         # update default dict after certain number of frame count.
-        if self.showMinimap and (self.count > 100):
+        if self.showTrajectory and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
                 del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
@@ -247,22 +238,19 @@ class Visualizer():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
-            if self.showTrajectory:
-                _, max_y = sorted((y1, y2))
-                pt_trajectory = self.Minimap_obj.trajectory_on_real_map((x1+x2)/2, max_y)
-                self.draw_trajectory_on_map[classID].append(tuple(pt_trajectory))
-                self.draw_trajectory_on_img[classID].append((int((x1+x2)/2), int(max_y)))
-
             if self.showMinimap:
                 # Converting coordinates from image to map
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
 
-                if self.count % update_rate == 0:
-                    self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
-                frame = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img, frame)
-                
+                if self.showTrajectory:
+                  if self.count % update_rate == 0:
+                      self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
+                  minimap_img = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img)
+                else:
+                  cv2.circle(minimap_img, point_coordinates, 1, color, -1, cv2.LINE_AA)
+                  
                 # Plotting the text
                 textSize, _ = cv2.getTextSize(str(tracker_id), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
                 rectangle_start_coord = (point_coordinates[0] + 3, point_coordinates[1] - textSize[1] - 5)
@@ -270,9 +258,10 @@ class Visualizer():
                 
                 cv2.rectangle(minimap_img, rectangle_start_coord, rectangle_end_coord, color, -1)
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
+                frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
         
         # update default dict after certain numbe rof frame count.
-        if self.showMinimap and (self.count > 100):
+        if self.showTrajectory and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
                 del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
@@ -343,22 +332,19 @@ class Visualizer():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
-            if self.showTrajectory:
-                _, max_y = sorted((y1, y2))
-                pt_trajectory = self.Minimap_obj.trajectory_on_real_map((x1+x2)/2, max_y)
-                self.draw_trajectory_on_map[classID].append(tuple(pt_trajectory))
-                self.draw_trajectory_on_img[classID].append((int((x1+x2)/2), int(max_y)))
-
             if self.showMinimap:      
                 # Converting coordinates from image to map
                 # Just using the larger y value because BBOX center is not were the foot/wheels of the classes are. So center point taken is the center of the bottom line of BBOX
                 _, max_y = sorted((y1, y2))
                 point_coordinates = self.Minimap_obj.projection_image_to_map((x1+x2)/2, max_y)
 
-                if self.count % update_rate == 0:
-                    self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
-                frame = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img, frame)
-                
+                if self.showTrajectory:
+                  if self.count % update_rate == 0:
+                      self.realtime_trajectory[tracker_id].append((point_coordinates[0], point_coordinates[1], classID))
+                  minimap_img = self.draw_realtime_trajectory_2(self.realtime_trajectory, minimap_img)
+                else:
+                  cv2.circle(minimap_img, point_coordinates, 1, color, -1, cv2.LINE_AA)
+
                 # Plotting the text
                 textSize, _ = cv2.getTextSize(str(tracker_id), cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
                 rectangle_start_coord = (point_coordinates[0] + 3, point_coordinates[1] - textSize[1] - 5)
@@ -366,51 +352,12 @@ class Visualizer():
                 
                 cv2.rectangle(minimap_img, rectangle_start_coord, rectangle_end_coord, color, -1)
                 cv2.putText(minimap_img, str(tracker_id), tuple((point_coordinates[0] + 3, point_coordinates[1] - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA)
-        
+                frame[self.Minimap_obj.locationMinimap[0][1]:self.Minimap_obj.locationMinimap[1][1], self.Minimap_obj.locationMinimap[0][0]:self.Minimap_obj.locationMinimap[1][0]] = minimap_img
+
         # update default dict after certain numbe rof frame count.
-        if self.showMinimap and (self.count > 100):
+        if self.showTrajectory and (self.count > 100):
             for k in list(self.realtime_trajectory.keys()):
                 del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
 
         return frame
-
-    def draw_All_trejectory(self, draw_trajectory_on_map, draw_trajectory_on_img, trajectory_mode = False, result_type= 'On_map'):
-        if trajectory_mode == True:
-            if result_type == "On_map":
-                img = cv2.imread('./map_files/map_satellite_cropped.png')
-                for key, value in draw_trajectory_on_map.items():
-                    if key == 0:
-                        color = self.classID_dict[key][1]
-                        for v in value:
-                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                    elif key == 1:
-                        color = self.classID_dict[key][1]
-                        for v in value:
-                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                    elif key == 2:
-                        color = self.classID_dict[key][1]
-                        for v in value:
-                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                return img
-
-            elif result_type == "On_image":
-                img = cv2.imread('./map_files/image.jpeg')
-                for key, value in draw_trajectory_on_img.items():
-                    if key == 0:
-                        color = self.classID_dict[key][1]
-                        for v in value:
-                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                    elif key == 1:
-                        color = self.classID_dict[key][1]
-                        for v in value:
-                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                    elif key == 2:
-                        color = self.classID_dict[key][1]
-                        for v in value:
-                            img = cv2.circle(img, (v[0],v[1]), 1, color, -1, cv2.LINE_AA)
-                return img
-
-        else:
-            pass
-    
