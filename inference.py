@@ -212,7 +212,7 @@ class Inference():
         
             # Save the images or videos
             if self.inference_mode == 'SingleImage':
-                self.frame = Visualize.drawBBOX(pred[0], im0)
+                self.frame = Visualize.drawBBOX(pred, im0)
                 cv2.imwrite(self.output, self.frame)
             
             elif self.inference_mode == 'Video':
@@ -248,7 +248,9 @@ class Inference():
             if framecount > 10000:
                 vid_writer.release()
                 break
-        vid_writer.release()
+            
+        if self.inference_mode == 'Video':    
+            vid_writer.release()
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.3fms NMS per image at shape {(1, 3, *im.shape[2:])}, %.1fms Post-processing' % t)
