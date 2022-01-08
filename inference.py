@@ -9,6 +9,8 @@ from torch._C import device
 from tqdm import tqdm
 from collections import namedtuple, defaultdict
 import torch.backends.cudnn as cudnn
+from queue import Full, Queue
+from threading import Thread
 
 import sys
 sys.path.append('./yolo_v5_main_files')
@@ -54,7 +56,12 @@ class Inference():
             elif input[-4:] in ['.mp4', '.mkv', '.avi']:
                 self.input = input
                 self.inference_mode = 'Video'
-                self.fps = 30
+                cap = cv2.VideoCapture(input)
+                self.video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                self.video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                self.fps = int(cap.get(cv2.CAP_PROP_FPS))
+                cap.release()
+                del cap
             else:
                 print("Invalid input file. The file should be an image or a video !!")
                 exit(-1)
@@ -109,6 +116,14 @@ class Inference():
             self.update_rate = update_rate
             print(f"[INFO] update_rate is set to {self.update_rate}")
 
+        self.framecount = 0
+        # Initializing Video-Writer      
+        self.vidWriter = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (self.video_width, self.video_height))
+        self._thread_videoWriter_running = True
+        self._thread_videoWriter_Queue = Queue(maxsize=100) # Setting queue size of 100 frames
+        self._thread_videoWriter = Thread(target=self._thread_videoWriter_write, args=())
+        self._thread_videoWriter.daemon = True
+
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
         self.stride, self.names, self.pt, self.jit, self.onnx, self.engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
@@ -132,6 +147,16 @@ class Inference():
 
         self.runInference()
     
+    def _thread_videoWriter_write(self):
+        while True:
+            if not self._thread_videoWriter_running or self.framecount > 100:
+                while not self._thread_videoWriter_Queue.empty():
+                    self.vidWriter.write(self._thread_videoWriter_Queue.get())
+                self.vidWriter.release()
+                return
+            if not self._thread_videoWriter_Queue.empty():
+                self.vidWriter.write(self._thread_videoWriter_Queue.get_nowait())
+
     def UpdateTracker(self, pred):
         if len(pred) > 0:
             dets = []
@@ -171,10 +196,11 @@ class Inference():
 
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
-        framecount = 0
+        
         time_start = time_sync()
+        self._thread_videoWriter.start()
         for path, im, im0, vid_cap, s in dataset:
-            framecount += 1
+            self.framecount += 1
             t1 = time_sync()
             im = torch.from_numpy(im).to(self.device)
             im = im.half() if self.half else im.float()  # uint8 to fp16/32
@@ -212,8 +238,8 @@ class Inference():
         
             # Save the images or videos
             if self.inference_mode == 'SingleImage':
-                self.frame = Visualize.drawBBOX(pred[0], im0)
-                cv2.imwrite(self.output, self.frame)
+                frame = Visualize.drawBBOX(pred, im0)
+                cv2.imwrite(self.output, frame)
             
             elif self.inference_mode == 'Video':
                 # Update the tracker
@@ -223,34 +249,39 @@ class Inference():
                 velocity_estimation = []
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
 
+                pass_which = -1
                 if calculated_velocity:
-                    self.frame = Visualize.drawAll(calculated_velocity, im0, self.update_rate)
+                    pass_which = 1
+                    frame = Visualize.drawAll(calculated_velocity, im0, self.update_rate)
                 elif len(self.tracker) > 0:
-                    self.frame = Visualize.drawTracker(self.tracker, im0, self.update_rate)
+                    pass_which = 2
+                    frame = Visualize.drawTracker(self.tracker, im0, self.update_rate)
                 elif len(pred) > 0:
-                    self.frame = Visualize.drawBBOX(pred, im0, self.update_rate)
+                    pass_which = 3
+                    frame = Visualize.drawBBOX(pred, im0, self.update_rate)
+                else:
+                    pass_which = 4
+                    frame = im0
                   
                 t5 = time_sync()
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
 
-                if vid_path != self.output:  # new video
-                    vid_path = self.output
-                    w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                    h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
-                vid_writer.write(self.frame)      
-            
-            if framecount > 10000:
-                vid_writer.release()
-                break
-        
+                # if vid_path != self.output:  # new video
+                #     vid_path = self.output
+                #     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                #     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                #     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
+                print(f"Pass block: {pass_which}")
+                self._thread_videoWriter_Queue.put(frame.copy(), block=True)              
+
+        self._thread_videoWriter.join()
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.3fms NMS per image at shape {(1, 3, *im.shape[2:])}, %.1fms Post-processing' % t)
         time_end = time_sync()
         print(f'Total time for inference (including pre and post-processing): {round(time_end-time_start, 2)}s')
-        print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
+        print(f'Average total fps: {round(self.framecount/round(time_end-time_start, 2), 2)}fps')
     
     def parse_opt():
         parser = argparse.ArgumentParser()

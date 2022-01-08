@@ -172,7 +172,7 @@ class Visualizer():
                 del self.realtime_trajectory[k][0:int(len(self.realtime_trajectory[k])/2)]
             self.count = 0
 
-            return frame
+        return frame
 
     def drawTracker(self, trackers, frame, update_rate):
         """Draws the BBOX along with Tracker ID for each BBOX
