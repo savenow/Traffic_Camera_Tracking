@@ -31,7 +31,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 class Inference():
     def __init__(self, input, model_weights, output=None, trj_output=None, 
                 minimap=False, trj_mode=False,  imgSize=[1920, 1920],
-                update_rate = 1):        
+                update_rate = 30):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.25
@@ -99,15 +99,14 @@ class Inference():
         self.showTrajectory = trj_mode
 
         # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
-        if self.update_rate > self.fps:
-            self.update_rate = 1
+        if update_rate > self.fps:
+            update_rate = 1
             print("[INFO] update_rate cannot exceed the video fps")
-        elif self.update_rate <= 0:
-            self.update_rate = self.fps #int(self.fps/2)
+        elif update_rate <= 0:
+            update_rate = self.fps #int(self.fps/2)
             print(f"[INFO] update_rate cannot be negative or 0.")
-        else:
-            self.update_rate = int(self.fps/update_rate)
-        print(f"[INFO] update_rate is set to {self.update_rate}")
+        self.update_rate = int(self.fps/update_rate)
+        print(f"[INFO] update_rate is set to every {self.update_rate} frame")
 
         self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
 
@@ -249,7 +248,7 @@ class Inference():
                     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer.write(frame)      
             
-            if framecount > 10000:
+            if framecount > 200:
                 vid_writer.release()
                 break
 
@@ -271,7 +270,7 @@ class Inference():
         parser.add_argument('--minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
-        parser.add_argument('--update_rate', type=int, default=1, help='provide a number to update a trajectory after certain frames')
+        parser.add_argument('--update_rate', type=int, default=30, help='provide a number to update a trajectory after certain frames')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
