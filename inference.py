@@ -98,16 +98,18 @@ class Inference():
 
         self.showTrajectory = trj_mode
 
-        # setting limit for update_rate
+        # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
         if self.update_rate > self.fps:
-            self.update_rate = self.fps
-            print(f"[INFO] update_rate exceeds the video fps. Hence, update_rate is set to {self.update_rates} per frame")
+            self.update_rate = 1
+            print("[INFO] update_rate cannot exceed the video fps")
         elif self.update_rate <= 0:
-            self.update_rate = int(self.fps/2)
-            print(f"[INFO] update_rate cannot be negative or 0. Hence, update_rate is set to {self.update_rate}")
+            self.update_rate = self.fps #int(self.fps/2)
+            print(f"[INFO] update_rate cannot be negative or 0.")
         else:
-            self.update_rate = update_rate
-            print(f"[INFO] update_rate is set to {self.update_rate}")
+            self.update_rate = int(self.fps/update_rate)
+        print(f"[INFO] update_rate is set to {self.update_rate}")
+
+        self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
@@ -169,7 +171,7 @@ class Inference():
         bs = 1
         vid_path, vid_writer = None, None
 
-        Visualize = Visualizer(self.enable_minimap, self.enable_trajectory)
+        Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
         framecount = 0
         time_start = time_sync()
@@ -224,15 +226,17 @@ class Inference():
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
 
                 if calculated_velocity:
-                    frame = Visualize.drawAll(calculated_velocity, im0, self.update_rate)
+                    frame = Visualize.drawAll(calculated_velocity, im0, framecount)
                 elif len(self.tracker) > 0:
-                    frame = Visualize.drawTracker(self.tracker, im0, self.update_rate)
+                    frame = Visualize.drawTracker(self.tracker, im0, framecount)
                 elif len(pred) > 0:
-                    frame = Visualize.drawBBOX(pred, im0, self.update_rate)
+                    frame = Visualize.drawBBOX(pred, im0, framecount)
                 else:
-                    frame = im0
-                    if self.enable_minimap:
-                        frame[Visualize.Minimap_obj.locationMinimap[0][1]:Visualize.Minimap_obj.locationMinimap[1][1], Visualize.Minimap_obj.locationMinimap[0][0]:Visualize.Minimap_obj.locationMinimap[1][0]] = Visualize.Minimap_obj.Minimap.copy()
+                    frame = Visualize.drawEmpty(im0, framecount)
+                    # frame = im0
+                    # if self.enable_minimap and self.enable_trajectory:
+
+                    #     frame[Visualize.Minimap_obj.locationMinimap[0][1]:Visualize.Minimap_obj.locationMinimap[1][1], Visualize.Minimap_obj.locationMinimap[0][0]:Visualize.Minimap_obj.locationMinimap[1][0]] = Visualize.Minimap_obj.Minimap.copy()
                   
                 t5 = time_sync()
                 dt[3] += t5 - t4
@@ -248,7 +252,7 @@ class Inference():
             if framecount > 10000:
                 vid_writer.release()
                 break
-            
+
         if self.inference_mode == 'Video':    
             vid_writer.release()
         # Print results
