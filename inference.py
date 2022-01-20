@@ -9,6 +9,7 @@ from torch._C import device
 from tqdm import tqdm
 from collections import namedtuple, defaultdict
 import torch.backends.cudnn as cudnn
+import pandas as pd
 
 import sys
 sys.path.append('./yolo_v5_main_files')
@@ -21,6 +22,7 @@ from hubconf import custom
 from sort_yoloV5 import Sort
 from visualizer import Visualizer
 from calibration import Calibration
+from timestamp_ocr import OCR_TimeStamp
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -170,13 +172,39 @@ class Inference():
         bs = 1
         vid_path, vid_writer = None, None
 
+        ocr = OCR_TimeStamp()
+        time_ocr_output = {
+            'Date': [],
+            'Time': [],
+            'Millisec': [],
+            'Video_Internal_Timer': []
+        }
+
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
         framecount = 0
         time_start = time_sync()
-        for path, im, im0, vid_cap, s in dataset:
+        for path, im, im0, vid_cap, s, videoTimer in dataset:
             framecount += 1
+
+            # OCR Reading Timestamp
+            if ocr.need_pyt or framecount == 1:
+                time_ocr_frame = ocr.run_ocr((im[4:41, 0:568], videoTimer))
+            else:
+                time_ocr_frame  = ocr.run_ocr(videoTimer)
+
+            if isinstance(time_ocr_frame, datetime):
+                date = time_ocr_frame.strftime("%d.%m.%Y")
+                time = time_ocr_frame.strftime("%H:%M:%S")
+                millisec = int(time_ocr_frame.microsecond / 1000)
+                time_ocr_output["Date"].append(date)
+                time_ocr_output["Time"].append(time)
+                time_ocr_output['Millisec'].append(millisec)
+                time_ocr_output['Video_Internal_Timer'].append(videoTimer)
+            
             t1 = time_sync()
+            im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+            im = np.ascontiguousarray(im)
             im = torch.from_numpy(im).to(self.device)
             im = im.half() if self.half else im.float()  # uint8 to fp16/32
             im /= 255  # 0 - 255 to 0.0 - 1.0
@@ -232,11 +260,7 @@ class Inference():
                     frame = Visualize.drawBBOX(pred, im0, framecount)
                 else:
                     frame = Visualize.drawEmpty(im0, framecount)
-                    # frame = im0
-                    # if self.enable_minimap and self.enable_trajectory:
-
-                    #     frame[Visualize.Minimap_obj.locationMinimap[0][1]:Visualize.Minimap_obj.locationMinimap[1][1], Visualize.Minimap_obj.locationMinimap[0][0]:Visualize.Minimap_obj.locationMinimap[1][0]] = Visualize.Minimap_obj.Minimap.copy()
-                  
+                   
                 t5 = time_sync()
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
@@ -260,7 +284,11 @@ class Inference():
         time_end = time_sync()
         print(f'Total time for inference (including pre and post-processing): {round(time_end-time_start, 2)}s')
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
-    
+        
+        df = pd.DataFrame(time_ocr_output)
+        df.to_csv("Check_Time_1.csv")
+
+
     def parse_opt():
         parser = argparse.ArgumentParser()
         parser.add_argument('--input', type=str, default=None, help=['path to input file(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
