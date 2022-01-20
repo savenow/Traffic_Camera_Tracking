@@ -137,7 +137,7 @@ class Visualizer():
                 self.Minimap_obj.update_realtime_trajectory(frameCount)
         
         for detection in xyxy:  
-            x1, y1, x2, y2 = detection[0:4]git ad
+            x1, y1, x2, y2 = detection[0:4]
             x1 = int(x1)
             y1 = int(y1)
             x2 = int(x2)
