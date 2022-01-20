@@ -181,8 +181,8 @@ class Inference():
             temp_dict['Class_ID'] = int(detection[5])
             temp_dict['Conf_Score'] = round(detection[4] * 100, 1)
 
-            center_x = (detection[0] + detection[2])/2        
-            _, max_y = sorted((detection[1], detection[3]))
+            center_x = (int(detection[0]) + int(detection[2]))/2        
+            _, max_y = sorted((int(detection[1]), int(detection[3])))
             temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
             output.append(temp_dict)
         return output
@@ -196,8 +196,8 @@ class Inference():
             temp_dict['Class_ID'] = int(detection[5].item())
             temp_dict['Conf_Score'] = round(detection[4].item() * 100, 1)
 
-            center_x = (detection[0] + detection[2])/2        
-            _, max_y = sorted((detection[1], detection[3]))
+            center_x = (int(detection[0]) + int(detection[2]))/2        
+            _, max_y = sorted((int(detection[1]), int(detection[3])))
             temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
             output.append(temp_dict)
         return output
