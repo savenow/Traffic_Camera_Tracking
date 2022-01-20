@@ -11,6 +11,7 @@ from collections import namedtuple, defaultdict
 import torch.backends.cudnn as cudnn
 import pandas as pd
 from datetime import datetime, timedelta
+from copy import deepcopy
 
 import sys
 sys.path.append('./yolo_v5_main_files')
@@ -21,7 +22,7 @@ from utils.general import LOGGER, non_max_suppression, scale_coords, check_img_s
 from hubconf import custom
 
 from sort_yoloV5 import Sort
-from visualizer import Visualizer
+from visualizer import Visualizer, Minimap
 from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
 
@@ -134,6 +135,9 @@ class Inference():
         # Parameters for velocity estimation
         self.trackDict = defaultdict(list)
 
+        # For storing conversion values
+        self.Minimap_storage = Minimap()
+
         self.runInference()
     
     def UpdateTracker(self, pred):
@@ -149,11 +153,11 @@ class Inference():
         
     def VelocityEstimation(self, velocity_array):    
         for detection in self.tracker:
-            center_x = (detection[0] + detection[1])/2
-            center_y = (detection[2] + detection[3])/2           
+            center_x = (detection[0] + detection[2])/2        
+            _, max_y = sorted((detection[1], detection[3]))
 
             trackID = int(detection[9])
-            self.trackDict[trackID].append((int(center_x), int(center_y)))
+            self.trackDict[trackID].append((int(center_x), int(max_y)))
             
             if len(self.trackDict[trackID]) > 2: 
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
@@ -168,25 +172,60 @@ class Inference():
 
         return velocity_array
 
+    def UpdateStorage_withTracker(self, output_dictionary):
+        output = []
+        for detection in self.tracker:
+            temp_dict = deepcopy(output_dictionary)
+
+            temp_dict['Tracker_ID'] = int(detection[9])
+            temp_dict['Class_ID'] = int(detection[5])
+            temp_dict['Conf_Score'] = round(detection[4] * 100, 1)
+
+            center_x = (detection[0] + detection[2])/2        
+            _, max_y = sorted((detection[1], detection[3]))
+            temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
+            output.append(temp_dict)
+        return output
+    
+    def UpdateStorage_onlyYolo(self, output_dictionary, pred):
+        output = []
+        for detection in pred:
+            temp_dict = deepcopy(output_dictionary)
+
+            temp_dict['Tracker_ID'] = None
+            temp_dict['Class_ID'] = int(detection[5].item())
+            temp_dict['Conf_Score'] = round(detection[4] * 100, 1)
+
+            center_x = (detection[0] + detection[2])/2        
+            _, max_y = sorted((detection[1], detection[3]))
+            temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
+            output.append(temp_dict)
+        return output
+
     def runInference(self):
         dataset = LoadImages(self.input, img_size=self.img_size, stride=self.stride, auto=self.pt and not self.jit)
         bs = 1
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
-        time_ocr_output = {
-            'Date': [],
-            'Time': [],
-            'Millisec': [],
-            'Video_Internal_Timer': []
-        }
-
+        output_data = []
+        # storing_output = {
+        #     'Video_Internal_Timer': ,
+        #     'Date': ,
+        #     'Time': ,
+        #     'Millisec': ,
+        #     'Tracker_ID': ,
+        #     'Class_ID': ,
+        #     'Conf_Score': ,
+        #     'Minimap_x': 
+        # }
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
         framecount = 0
         time_start = time_sync()
         for path, im, im0, vid_cap, s, videoTimer in dataset:
             framecount += 1
+            storing_output = {}
 
             # OCR Reading Timestamp
             if ocr.need_pyt or framecount == 1:
@@ -198,11 +237,12 @@ class Inference():
                 date = time_ocr_frame.strftime("%d.%m.%Y")
                 time = time_ocr_frame.strftime("%H:%M:%S")
                 millisec = int(time_ocr_frame.microsecond / 1000)
-                time_ocr_output["Date"].append(date)
-                time_ocr_output["Time"].append(time)
-                time_ocr_output['Millisec'].append(millisec)
-                time_ocr_output['Video_Internal_Timer'].append(videoTimer)
+                storing_output["Video_Internal_Timer"].append(videoTimer)
+                storing_output["Date"].append(date)
+                storing_output["Time"].append(time)
+                storing_output["Millisec"].append(millisec)
             
+            # Image Preprocessing for inference
             t1 = time_sync()
             im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
             im = np.ascontiguousarray(im)
@@ -249,6 +289,13 @@ class Inference():
                 # Update the tracker
                 self.UpdateTracker(pred)
                 
+                # Storing values for post-processing
+                if len(pred) > 0:
+                    if len(self.tracker) > 0:
+                        output_data.extend(self.UpdateStorage_withTracker(storing_output))
+                    else:
+                        output_data.extend(self.UpdateStorage_onlyYolo(storing_output, pred))
+            
                 # Velocity Estimation
                 velocity_estimation = []
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
@@ -286,7 +333,7 @@ class Inference():
         print(f'Total time for inference (including pre and post-processing): {round(time_end-time_start, 2)}s')
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
         
-        df = pd.DataFrame(time_ocr_output)
+        df = pd.DataFrame(output_data)
         df.to_csv("Check_Time_1.csv")
 
 

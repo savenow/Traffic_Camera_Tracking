@@ -43,6 +43,18 @@ class Minimap():
         pt2 = np.dot(self.homography_CameraToMap, pt1)
         pt2 = pt2 / pt2[2]
         return (int(pt2[0]*self.width_scaling), int(pt2[1]*self.height_scaling))
+
+    def projection_image_to_map_noScaling(self, x, y):
+        """Converts image coordinates to minimap coordinates using loaded the homography matrix
+
+        Returns:
+          (int, int): x, y coordinates with respective to scaled minimap
+        """
+        pt1 = np.array([x, y, 1])
+        pt1 = pt1.reshape(3, 1)
+        pt2 = np.dot(self.homography_CameraToMap, pt1)
+        pt2 = pt2 / pt2[2]
+        return (int(pt2[0]), int(pt2[1]))
     
     def update_realtime_trajectory(self, current_frameNumber):
         """Responsible for deleting trajectory points for each tracker id after 'self.trajectory_retain_duration' frames
@@ -125,7 +137,7 @@ class Visualizer():
                 self.Minimap_obj.update_realtime_trajectory(frameCount)
         
         for detection in xyxy:  
-            x1, y1, x2, y2 = detection[0:4]
+            x1, y1, x2, y2 = detection[0:4]git ad
             x1 = int(x1)
             y1 = int(y1)
             x2 = int(x2)
