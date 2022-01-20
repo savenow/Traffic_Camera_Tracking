@@ -10,6 +10,7 @@ from tqdm import tqdm
 from collections import namedtuple, defaultdict
 import torch.backends.cudnn as cudnn
 import pandas as pd
+from datetime import datetime, timedelta
 
 import sys
 sys.path.append('./yolo_v5_main_files')
@@ -101,13 +102,13 @@ class Inference():
         self.showTrajectory = trj_mode
 
         # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
-        if update_rate > self.fps:
-            update_rate = 1
+        if self.update_rate > self.fps:
+            self.update_rate = 1
             print("[INFO] update_rate cannot exceed the video fps")
-        elif update_rate <= 0:
-            update_rate = self.fps #int(self.fps/2)
+        elif self.update_rate <= 0:
+            self.update_rate = self.fps
             print(f"[INFO] update_rate cannot be negative or 0.")
-        self.update_rate = int(self.fps/update_rate)
+        self.update_rate = int(self.fps/self.update_rate)
         print(f"[INFO] update_rate is set to every {self.update_rate} frame")
 
         self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
