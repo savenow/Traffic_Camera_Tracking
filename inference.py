@@ -181,8 +181,15 @@ class Inference():
             temp_dict['Class_ID'] = int(detection[5])
             temp_dict['Conf_Score'] = round(detection[4] * 100, 1)
 
-            center_x = (int(detection[0]) + int(detection[2]))/2        
-            _, max_y = sorted((int(detection[1]), int(detection[3])))
+            x1 = int(detection[0])
+            y1 = int(detection[1])
+            x2 = int(detection[2])
+            y2 = int(detection[3])
+            temp_dict['BBOX_TopLeft'] = (x1, y1)
+            temp_dict['BBOX_BottomRight'] = (x2, y2)
+            
+            center_x = (x1+x2)/2        
+            _, max_y = sorted((y1, y2))
             temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
             output.append(temp_dict)
         return output
@@ -195,9 +202,16 @@ class Inference():
             temp_dict['Tracker_ID'] = None
             temp_dict['Class_ID'] = int(detection[5].item())
             temp_dict['Conf_Score'] = round(detection[4].item() * 100, 1)
+            
+            x1 = int(detection[0])
+            y1 = int(detection[1])
+            x2 = int(detection[2])
+            y2 = int(detection[3])
+            temp_dict['BBOX_TopLeft'] = (x1, y1)
+            temp_dict['BBOX_BottomRight'] = (x2, y2)
 
-            center_x = (int(detection[0]) + int(detection[2]))/2        
-            _, max_y = sorted((int(detection[1]), int(detection[3])))
+            center_x = (x1+x2)/2        
+            _, max_y = sorted((y1, y2))
             temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
             output.append(temp_dict)
         return output
@@ -208,17 +222,7 @@ class Inference():
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
-        output_data = []
-        # storing_output = {
-        #     'Video_Internal_Timer': ,
-        #     'Date': ,
-        #     'Time': ,
-        #     'Millisec': ,
-        #     'Tracker_ID': ,
-        #     'Class_ID': ,
-        #     'Conf_Score': ,
-        #     'Minimap_x': 
-        # }
+        output_data = [] # For writing detection/tracker data to .csv for post processing
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
         framecount = 0
@@ -237,10 +241,10 @@ class Inference():
                 date = time_ocr_frame.strftime("%d.%m.%Y")
                 time = time_ocr_frame.strftime("%H:%M:%S")
                 millisec = int(time_ocr_frame.microsecond / 1000)
-                storing_output["Video_Internal_Timer"].append(videoTimer)
-                storing_output["Date"].append(date)
-                storing_output["Time"].append(time)
-                storing_output["Millisec"].append(millisec)
+                storing_output["Video_Internal_Timer"]= videoTimer
+                storing_output["Date"] = date
+                storing_output["Time"] = time
+                storing_output["Millisec"] = millisec
             
             # Image Preprocessing for inference
             t1 = time_sync()
@@ -290,12 +294,16 @@ class Inference():
                 self.UpdateTracker(pred)
                 
                 # Storing values for post-processing
-                if len(pred) > 0:
-                    if len(self.tracker) > 0:
-                        output_data.extend(self.UpdateStorage_withTracker(storing_output))
-                    else:
-                        output_data.extend(self.UpdateStorage_onlyYolo(storing_output, pred))
-            
+                
+                if len(self.tracker) > 0:
+                    output_data.extend(self.UpdateStorage_withTracker(storing_output))
+                elif len(pred) > 0:
+                    print("No Trackers")
+                    output_data.extend(self.UpdateStorage_onlyYolo(storing_output, pred))
+                else:
+                    print("No Trackers/Predictions")
+                    output_data.append(storing_output)
+
                 # Velocity Estimation
                 velocity_estimation = []
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
@@ -320,7 +328,7 @@ class Inference():
                     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer.write(frame)      
             
-            if framecount > 200:
+            if framecount > 6000:
                 vid_writer.release()
                 break
 
@@ -334,7 +342,7 @@ class Inference():
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
         
         df = pd.DataFrame(output_data)
-        df.to_csv("Check_Time_1.csv")
+        df.to_csv("Detection_Tracker_Data.csv")
 
 
     def parse_opt():
