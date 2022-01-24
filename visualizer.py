@@ -143,9 +143,16 @@ class Visualizer():
             x2 = int(x2)
             y2 = int(y2)
 
-            conf_score = round(detection[4].item() * 100, 1)
-            classID = int(detection[5].item())
+            try:
+                conf_score = round(detection[4].item() * 100, 1)
+            except AttributeError:
+                conf_score = round(detection[4] * 100, 1)
 
+            try:
+                classID = int(detection[5].item())
+            except AttributeError:
+                classID = int(detection[5])
+                
             color = self.classID_dict[classID][1]
             
             # Displays the main bbox

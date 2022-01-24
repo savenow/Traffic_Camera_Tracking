@@ -4,4 +4,5 @@ __pycache__**/
 *.pt
 *.engine
 *.onnx
+*.mp4
 runs**/
