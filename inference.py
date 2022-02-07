@@ -74,14 +74,6 @@ class Inference():
             elif model_weights[-7:] == '.engine':
                 self.model_weights = model_weights
                 self.inference_backend = 'TensorRT'
-
-                if self.img_size == [1920, 1920]:
-                    self.img_size = [1408, 1408]
-                elif self.img_size == [1280, 1280]:
-                    self.img_size = [960, 960]
-                else:
-                    print("For running inference using TensorRT, please modify 'img_size' variable in inference.py appropriately")
-                    exit()
             else:
                 print(f"Invalid Weights file. {model_weights} does not end with '.engine' or '.pt'")
                 exit(-1)
