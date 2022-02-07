@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 import os
 import argparse
+import time
 
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
@@ -52,68 +53,71 @@ class ExtractFromCSV():
 
     def groupedData_toVideoWriter(self, list_grouped_by_frametimes):
         framecounter = 0
-        if self.video_cap.isOpened():
-            for data in list_grouped_by_frametimes:
-                df_frametime = data[0]['Video_Internal_Timer']
-                self.video_cap.set(cv2.CAP_PROP_POS_MSEC, df_frametime)
-                ret, frame = self.video_cap.read()
-                if ret:
-                    framecounter += 1
-                    print(f"[INFO] Processing frame {framecounter}")
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                
-                    # Timestamp-Text properties
-                    org = (700, 30)
-                    fontScale = 1
-                    color = (0, 0, 255)
-                    thickness = 2
+        while self.video_cap.isOpened():
+            ret, frame = self.video_cap.read()
+            if ret:
+                vid_timer = int(self.video_cap.get(cv2.CAP_PROP_POS_MSEC))
+                for data in list_grouped_by_frametimes:
+                    df_frametime = data[0]['Video_Internal_Timer']
                     
-                    # Displaying the extracted timestamp
-                    image = cv2.putText(frame, f"Extracted Time: {data[0]['Time']} {data[0]['Millisec']}", org, font, 
-                                fontScale, color, thickness, cv2.LINE_AA)
-
-                    for detection in data:
-                        if not pd.isna(detection['Tracker_ID']):
-                            # Drawing Trackers
-                            outer_array = []
-                            detection_array = []
-                            x1, y1 = detection['BBOX_TopLeft'][1:-1].split(',')
-                            x2, y2 = detection['BBOX_BottomRight'][1:-1].split(',')
-                            detection_array.append(int(x1))
-                            detection_array.append(int(y1))
-                            detection_array.append(int(x2))
-                            detection_array.append(int(y2))
-                            detection_array.append(detection['Conf_Score']/100)
-                            detection_array.append(detection['Class_ID'])
-                            detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
-                            detection_array.append(detection['Tracker_ID'])
-                            outer_array.append(detection_array)
-                            image = self.Visualize.drawTracker(outer_array, image, framecounter)
-                        elif not pd.isna(detection['Class_ID']):
-                            # Drawing just BBOXes
-                            outer_array = []
-                            detection_array = []
-                            x1, y1 = detection['BBOX_TopLeft'][1:-1].split(',')
-                            x2, y2 = detection['BBOX_BottomRight'][1:-1].split(',')
-                            detection_array.append(int(x1))
-                            detection_array.append(int(y1))
-                            detection_array.append(int(x2))
-                            detection_array.append(int(y2))
-                            detection_array.append(detection['Conf_Score']/100)
-                            detection_array.append(detection['Class_ID'])
-                            outer_array.append(detection_array)
-                            image = self.Visualize.drawBBOX(outer_array, image, framecounter)
-                        else:
-                            # No Detections/Trackers. Just drawing the minimap (if enabled)
-                            image = self.Visualize.drawEmpty(image, framecounter)
-                    
-                    self.video_writer.write(image)
+                    # Checking for interal_timer from .csv file and matching it with the internal timer from video file (For syncing frames)
+                    if df_frametime == vid_timer:
+                        framecounter += 1
+                        print(f"[INFO] Processing frame {framecounter}")
+                        
+                        # Timestamp-Text properties
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        org = (700, 30)
+                        fontScale = 1
+                        color = (0, 0, 255)
+                        thickness = 2
+                        
+                        # Displaying the extracted timestamp
+                        image = cv2.putText(frame, f"Extracted Time: {data[0]['Time']} {data[0]['Millisec']}", org, font, 
+                                    fontScale, color, thickness, cv2.LINE_AA)
+                        
+                        for detection in data:
+                            if not pd.isna(detection['Tracker_ID']):
+                                # Drawing Trackers
+                                outer_array = []
+                                detection_array = []
+                                x1, y1 = detection['BBOX_TopLeft'][1:-1].split(',')
+                                x2, y2 = detection['BBOX_BottomRight'][1:-1].split(',')
+                                detection_array.append(int(x1))
+                                detection_array.append(int(y1))
+                                detection_array.append(int(x2))
+                                detection_array.append(int(y2))
+                                detection_array.append(detection['Conf_Score']/100)
+                                detection_array.append(detection['Class_ID'])
+                                detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
+                                detection_array.append(detection['Tracker_ID'])
+                                outer_array.append(detection_array)
+                                image = self.Visualize.drawTracker(outer_array, image, framecounter)
+                            elif not pd.isna(detection['Class_ID']):
+                                # Drawing just BBOXes
+                                outer_array = []
+                                detection_array = []
+                                x1, y1 = detection['BBOX_TopLeft'][1:-1].split(',')
+                                x2, y2 = detection['BBOX_BottomRight'][1:-1].split(',')
+                                detection_array.append(int(x1))
+                                detection_array.append(int(y1))
+                                detection_array.append(int(x2))
+                                detection_array.append(int(y2))
+                                detection_array.append(detection['Conf_Score']/100)
+                                detection_array.append(detection['Class_ID'])
+                                outer_array.append(detection_array)
+                                image = self.Visualize.drawBBOX(outer_array, image, framecounter)
+                            else:
+                                # No Detections/Trackers. Just drawing the minimap (if enabled)
+                                image = self.Visualize.drawEmpty(image, framecounter)
+                            
+                        self.video_writer.write(image)
                     # if framecounter > 200:
                     #     break
-                else:
-                    break
+            else:
+                break
 
-        print(f'Total Number of frames: {framecounter}')
+        print(f'[INFO] Finished saving video file.Total Number of frames: {framecounter}')
 
         self.video_writer.release()
         self.video_cap.release()
