@@ -38,8 +38,8 @@ class Inference():
                 update_rate = 30):        
         # Inference Params
         self.img_size = imgSize
-        self.conf_thres = 0.25
-        self.iou_thres = 0.45
+        self.conf_thres = 0.8
+        self.iou_thres = 0.5
         self.agnostic_nms = False
         self.max_det = 1000
         self.classes = None # Filter classes
@@ -116,7 +116,7 @@ class Inference():
         self.model = model
 
         # Initialize Tracker
-        self.Objtracker = Sort(max_age=30, min_hits=7, iou_threshold=0.15)
+        self.Objtracker = Sort(max_age=40, min_hits=7, iou_threshold=0.3)
         self.Objtracker.reset_count()
 
         # Camera Calibration data: Used for velocity estimation
@@ -214,6 +214,7 @@ class Inference():
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
+        ocr_vertical_offset = int((1920-1080)/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
         output_data = [] # For writing detection/tracker data to .csv for post processing
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
@@ -222,10 +223,10 @@ class Inference():
         for path, im, im0, vid_cap, s, videoTimer in dataset:
             framecount += 1
             storing_output = {}
-
+            
             # OCR Reading Timestamp
             if ocr.need_pyt or framecount == 1:
-                time_ocr_frame = ocr.run_ocr((im[4:41, 0:568], videoTimer))
+                time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+4:ocr_vertical_offset+41, 0:568], videoTimer))
             else:
                 time_ocr_frame  = ocr.run_ocr(videoTimer)
 
@@ -320,7 +321,7 @@ class Inference():
                     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer.write(frame)      
             
-            if framecount > 6000:
+            if framecount < -500:
                 vid_writer.release()
                 break
 

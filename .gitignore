@@ -7,3 +7,4 @@ __pycache__**/
 *.mp4
 runs**/
 post-process_test.ipynb
+*.csv

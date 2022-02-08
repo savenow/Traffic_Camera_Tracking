@@ -43,11 +43,11 @@ class OCR_TimeStamp:
             if all((keepWidth, keepHeight, keepArea, keepY)):
                 componentMask = (labels == i).astype("uint8") * 255
                 mask = cv2.bitwise_or(mask, componentMask)
-
+        
         # Converting the image to text
         text_ocr = pytesseract.image_to_string(
             mask, lang='eng', 
-            config='--psm 6 --oem 1 -c tessedit_char_whitelist=1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            config='--psm 6 --oem 1'#-c tessedit_char_whitelist=1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
         )[:-2]
 
         if not any(c for c in text_ocr if not c.isalnum() and not c.isspace()):
@@ -130,8 +130,19 @@ class OCR_TimeStamp:
             self.timeOCR += timedelta(microseconds=(videotimer-self.prevTimer)*1000)
             self.prevTimer = videotimer
             self.framecount += 1
-            #print(f"[OCR] Current Time: {self.timeOCR}")
             if self.framecount % (self.check_every_frames - 1) == 0:
                 self.need_pyt = True
 
         return self.timeOCR
+
+if __name__ == "__main__":
+    ocr = OCR_TimeStamp()
+    video_path = '/media/mydisk/videos/samples/08-06-2021_18-00.mkv'
+    vid_cap = cv2.VideoCapture(video_path)
+
+    if vid_cap.isOpened():
+        ret, frame = vid_cap.read()
+        if ret:
+            frame = frame[4:41, 0:568]
+
+            print(ocr.run_pytesseract(frame))
