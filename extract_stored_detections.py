@@ -29,7 +29,7 @@ class ExtractFromCSV():
                 if col['Video_Internal_Timer'] != 0:
                     start_index_drop = row + 1
                     break
-        self.detections_dataframe.drop(self.detections_dataframe.index[start_index_drop:last_index_drop], 0, inplace=True)
+            self.detections_dataframe.drop(self.detections_dataframe.index[start_index_drop:last_index_drop], 0, inplace=True)
         self.video_cap = cv2.VideoCapture(input_video)
 
         frame_width = int(self.video_cap.get(3))
