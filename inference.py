@@ -222,6 +222,11 @@ class Inference():
         time_start = time_sync()
         for path, im, im0, vid_cap, s, videoTimer in dataset:
             framecount += 1
+            if framecount < -1:
+                continue
+            elif framecount > 73000:
+                vid_writer.release()
+                break
             storing_output = {}
             
             # OCR Reading Timestamp
@@ -320,10 +325,6 @@ class Inference():
                     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
                 vid_writer.write(frame)      
-            
-            if framecount < -500:
-                vid_writer.release()
-                break
 
         if self.inference_mode == 'Video':    
             vid_writer.release()
