@@ -19,7 +19,17 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 class ExtractFromCSV():
     def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode):
         self.detections_dataframe = pd.read_csv(data_file)
-
+        # At the end of .csv file, some erroneous data from tracker has been found with Video_Internal_Timer = 0. The following code snippet would remove them from the dataframe
+        last_row_df = self.detections_dataframe.shape[0] - 1
+        if self.detections_dataframe.iloc[last_row_df]['Video_Internal_Timer'] == 0:
+            last_index_drop = last_row_df + 1
+            df_rev = self.detections_dataframe[::-1]
+            start_index_drop = -1    
+            for row, col in df_rev.iterrows():
+                if col['Video_Internal_Timer'] != 0:
+                    start_index_drop = row + 1
+                    break
+            self.detections_dataframe.drop(self.detections_dataframe.index[start_index_drop:last_index_drop], 0, inplace=True)
         self.video_cap = cv2.VideoCapture(input_video)
 
         frame_width = int(self.video_cap.get(3))
