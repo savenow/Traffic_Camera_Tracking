@@ -9,6 +9,7 @@ import math
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings("ignore") # To ignore certain warnings from Pandas
+from tqdm.auto import tqdm
 
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
@@ -159,6 +160,7 @@ class PostProcess():
         self.video_cap = cv2.VideoCapture(input_video)
         frame_width = int(self.video_cap.get(3))
         frame_height = int(self.video_cap.get(4))
+        self.video_fps = 30
         self.video_writer = cv2.VideoWriter(output_video, cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width,frame_height))
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode)
 
@@ -182,7 +184,7 @@ class PostProcess():
                 prev_frametime = df_frametime
             else:
                 detection_per_frame.append(row)
-        print("[INFO] Finished grouping the pandas dataframe by frametime")
+        #print("[INFO] Finished grouping the pandas dataframe by frametime")
         return list_grouped_by_frametimes
     
     def groupedData_toVideoWriter(self, df, list_grouped_by_frametimes):
@@ -190,20 +192,26 @@ class PostProcess():
         min_vid_timer = int(df['Video_Internal_Timer'].min())
         max_vid_timer = int(df['Video_Internal_Timer'].max())
         
+        total_frames = int((max_vid_timer - min_vid_timer)/(1000/self.video_fps)) + 1
+        pbar = tqdm(total=total_frames)
+
         self.video_cap.set(cv2.CAP_PROP_POS_MSEC, min_vid_timer)
         while self.video_cap.isOpened():
             ret, frame = self.video_cap.read()
             if ret:
                 vid_timer = int(self.video_cap.get(cv2.CAP_PROP_POS_MSEC))
+            
                 if vid_timer > max_vid_timer:
                     break
+                
+                pbar.update(1)
                 for data in list_grouped_by_frametimes:
                     df_frametime = data[0]['Video_Internal_Timer']
                     
                     # Checking for interal_timer from .csv file and matching it with the internal timer from video file (For syncing frames)
                     if df_frametime == vid_timer:
                         framecounter += 1
-                        print(f"[INFO] Saving frame {framecounter}")
+                        #print(f"[INFO] Saving frame {framecounter}")
                         
                         for detection in data:
                             if not pd.isna(detection['Speed']):
@@ -218,12 +226,11 @@ class PostProcess():
                                 detection_array.append(int(y1))
                                 detection_array.append(int(x2))
                                 detection_array.append(int(y2))
-                                if not pd.isna(detection['Class_ID']):
-                                    detection_array.append(detection['Conf_Score']/100)
-                                    detection_array.append(detection['Class_ID'])
+                                if not pd.isna(detection['Conf_Score']):
+                                    detection_array.append(detection['Conf_Score']/100)    
                                 else:
                                     detection_array.append(-1)
-                                    detection_array.append(0)
+                                detection_array.append(detection['Class_ID'])
                                 detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                 detection_array.append(detection['Tracker_ID'])
                                 detection_array.append(detection['Speed'])
@@ -242,12 +249,11 @@ class PostProcess():
                                 detection_array.append(int(y1))
                                 detection_array.append(int(x2))
                                 detection_array.append(int(y2))
-                                if not pd.isna(detection['Class_ID']):
-                                    detection_array.append(detection['Conf_Score']/100)
-                                    detection_array.append(detection['Class_ID'])
+                                if not pd.isna(detection['Conf_Score']):
+                                    detection_array.append(detection['Conf_Score']/100)    
                                 else:
                                     detection_array.append(-1)
-                                    detection_array.append(0)
+                                detection_array.append(detection['Class_ID'])
                                 detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                 detection_array.append(detection['Tracker_ID'])
                                 outer_array.append(detection_array)
@@ -276,6 +282,7 @@ class PostProcess():
                         self.video_writer.write(image)
             else:
                 break
+        pbar.close()
         self.video_writer.release()        
     
     # Helper functions for step 1: tracker removal
@@ -526,7 +533,7 @@ class PostProcess():
                         }   
                     else:
                         distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
-                        speed_kmH = float(distance_metres * video_fps * 3.6) # Converting meters/s to km/h and update rate is equal to video's fps (default 30, this is also the rate at which data is sampled in the .csv files)
+                        speed_kmH = float(distance_metres * self.video_fps * 3.6) # Converting meters/s to km/h and update rate is equal to video's fps (default 30, this is also the rate at which data is sampled in the .csv files)
                         if speed_kmH < 1:
                             speed_kmH = 0 # To prevent small movements in the BBOX_Positions when the VRU's are standing 
 
@@ -548,20 +555,98 @@ class PostProcess():
         df_interpolated_dup = df_interpolated_dup.join(final_ve_tracker_df['Speed'])
         return df_interpolated_dup
 
-    def run(self):
+    def class_id_matching(self, df):
+        """
+        Eliminates switching class_id and allocates the one class_id for each tracker
+        Processing steps:
+        1. Groups the entire dataframe by unique tracker id and calculates the standard deviation of Class_ID for each tracker
+        2. If standard deviation is less than 0.35, we are simply allocating the most frequently occurring Class_ID (calculated using pd.Mode()) to the entire tracker
+        3. If standard deviation is more than 0.35
+            3.1 Considering only non-zero speeds for each tracker (Considering speeds only when they are actually moving)
+            3.2 Ignoring rows of data if the bbox_coordinates lie within the specified ignorance regions
+            3.3 If mean speed of the tracker is more than 9 km/h, we are excluding the class_id 1 (pedestrian) and assigning the tracker with the most common occurring between escooter and cyclist
+            3.4 If max speed of the tracker is equal to or more than 22 km/h, we are assigning simply class_id 2 (cyclist)
+            3.5 If both of the above conditions are not met, we are simply allocating the most frequently occurring Class_ID to the entire tracker (just like in step 2 but now with considerations of 3.1 and 3.2)
+
+        Args:
+            df (pd.Dataframe): Dataframe with speed data for each tracker
+
+        Returns:
+            final_df (pd.Dataframe): Dataframe with corrected class_id_matching
+        """
+        df_speed_dup = df.copy()
+        unique_trackers = df_speed_dup.Tracker_ID.unique()
+        tracker_group = df_speed_dup.groupby('Tracker_ID')
+
+        cleanlist_trackers = [x for x in unique_trackers if str(x) != 'nan']
+        for unique_tracker_id in cleanlist_trackers:
+            single_tracker_group = tracker_group.get_group(unique_tracker_id)
+            
+            std_class_ID = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].std() 
+
+            if std_class_ID < 0.35:
+                # Allocating the most frequently occurring class_id
+                df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
+
+            else:
+                df_speed_second_dup = df_speed_dup.copy()
+
+                df_speed_second_dup.loc[((df_speed_second_dup['Tracker_ID'] == unique_tracker_id) & (df_speed_second_dup['Speed'] == 0)), ['Class_ID', 'Speed']] = np.nan
+
+                # Ignorance Regions - BBOX Coordinates within these regions are ignored
+                top_left_corner = np.array([[495,118], [590,173], [625,221], [673,225], [641,162], [680,145], [588,92]])
+                right_section = np.array([[1373,402], [1379,461], [1497,471], [1489,411]])
+                
+                for index, row in single_tracker_group.iterrows():
+                    x1, y1, x2, y2 = row['BBOX_TopLeft_x'], row['BBOX_TopLeft_y'], row['BBOX_BottomRight_x'], row['BBOX_BottomRight_y']
+                    center_x = (x1+x2)/2
+                    _, max_y = sorted((y1, y2))
+                    is_bbox_present_right = cv2.pointPolygonTest(right_section, (center_x, max_y), False)
+                    is_bbox_present_Topleft = cv2.pointPolygonTest(top_left_corner, (center_x, max_y), False)
+                    if (is_bbox_present_right == 1 or is_bbox_present_Topleft == 1): # Ignoring bbox coordinates present inside the ignorance regions
+                        df_speed_second_dup.iloc[index, [df_speed_second_dup.columns.get_loc(c) for c in ['Class_ID', 'Speed']]] = np.nan
+
+                corrected_speed_mean = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].mean()
+                corrected_speed_max = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].max()
+                
+                if corrected_speed_max >= 22:
+                    df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = 2
+
+                elif corrected_speed_mean > 9:
+                    keys = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().keys().tolist()
+                    counts = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().tolist()
+                    for freq in zip(keys, counts):# Ignoring Class_ID = 1 (pedestrian) and assigning the first value (since the counts is already in descending order, the first elements are obviously the more frequently occurring ;)
+                        if keys != 1: 
+                            df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = freq[0]
+                            break
+                
+                else:
+                    df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
+
+        return df_speed_dup
+        
+    def run(self): # Main function of the class which runs all the post-processing and saves the video
         df_duplicate = self.detections_dataframe.copy()
         removed_df = self.remove_tracker(df_duplicate)
+        print('\n-> Finished cleaning trackers')
         removed_df.to_csv(f'{self.file_name}_cleaned.csv')
 
         interpolated_df = self.interpolate_data(removed_df)
         interpolated_df.to_csv(f'{self.file_name}_interpolated.csv')
+        print('-> Finished interpolating missing tracker coordinates')
 
         speed_df = self.velocity_estimation(interpolated_df)
         speed_df.to_csv(f'{self.file_name}_speed.csv')
+        print('-> Finished calculating the velocities')
+
+        final_df = self.class_id_matching(speed_df)
+        final_df.to_csv(f'{self.file_name}_final.csv')
+        print('-> Finished Class_ID Matching')
+        print('Now, saving the video ...')
 
         # Save video
-        groupedByFrametime = self.group_by_internalTimer(speed_df)
-        self.groupedData_toVideoWriter(speed_df, groupedByFrametime)
+        groupedByFrametime = self.group_by_internalTimer(final_df)
+        self.groupedData_toVideoWriter(final_df, groupedByFrametime)
 
 def parser_opt():
     parser = argparse.ArgumentParser()
