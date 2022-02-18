@@ -225,10 +225,11 @@ class Inference():
             if framecount < -1:
                 continue
             elif framecount > 73000:
+            # elif framecount > 100:
                 vid_writer.release()
                 break
             storing_output = {}
-            
+            storing_output["Video_Internal_Timer"]= videoTimer
             # OCR Reading Timestamp
             if ocr.need_pyt or framecount == 1:
                 time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+4:ocr_vertical_offset+41, 0:568], videoTimer))
@@ -239,11 +240,14 @@ class Inference():
                 date = time_ocr_frame.strftime("%d.%m.%Y")
                 time = time_ocr_frame.strftime("%H:%M:%S")
                 millisec = int(time_ocr_frame.microsecond / 1000)
-                storing_output["Video_Internal_Timer"]= videoTimer
                 storing_output["Date"] = date
                 storing_output["Time"] = time
                 storing_output["Millisec"] = millisec
-            
+            else:
+                storing_output["Date"] = np.nan
+                storing_output["Time"] = np.nan
+                storing_output["Millisec"] = np.nan
+
             # Image Preprocessing for inference
             t1 = time_sync()
             im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
