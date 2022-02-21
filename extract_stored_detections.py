@@ -160,8 +160,8 @@ class PostProcess():
         return df
 
     def group_by_internalTimer(self, df):
-        vid_timer_gb = self.detections_dataframe.groupby(by=['Video_Internal_Timer'])
-        unique_vid_timer = self.detections_dataframe.Video_Internal_Timer.unique()
+        vid_timer_gb = df.groupby(by=['Video_Internal_Timer'])
+        unique_vid_timer = df.Video_Internal_Timer.unique()
         list_grouped_by_frametimes = []
         
         for vid_timer in unique_vid_timer:
