@@ -160,26 +160,18 @@ class PostProcess():
         return df
 
     def group_by_internalTimer(self, df):
-        framecounter = 0
-        prev_frametime = -1
+        vid_timer_gb = self.detections_dataframe.groupby(by=['Video_Internal_Timer'])
+        unique_vid_timer = self.detections_dataframe.Video_Internal_Timer.unique()
         list_grouped_by_frametimes = []
-        detection_per_frame = []
+        
+        for vid_timer in unique_vid_timer:
+            g = vid_timer_gb.get_group(vid_timer)
+            ls = []
+            for index, row in g.iterrows():
+                ls.append(row)
+            list_grouped_by_frametimes.append(ls)
 
-        for index, row in df.iterrows():
-            df_frametime = row['Video_Internal_Timer']
-            if prev_frametime == -1: # To properly allocate df_frametime with the framecount. Visualizer functions depends on framecount.
-                prev_frametime = df_frametime
-                detection_per_frame.append(row)
-                framecounter += 1
-            elif prev_frametime != df_frametime:
-                framecounter += 1
-                list_grouped_by_frametimes.append(detection_per_frame.copy())
-                detection_per_frame = []
-                detection_per_frame.append(row)
-                prev_frametime = df_frametime
-            else:
-                detection_per_frame.append(row)
-        #print("[INFO] Finished grouping the pandas dataframe by frametime")
+        print("[INFO] Finished grouping the pandas dataframe by frametime")
         return list_grouped_by_frametimes
     
     def groupedData_toVideoWriter(self, df, list_grouped_by_frametimes):
