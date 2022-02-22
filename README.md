@@ -35,7 +35,7 @@ Using predetermined Camera Calibration values, the homography is calculated and 
 
 ## Notes
 ----
-* Weights files and training datasets are not present in the repo
+* Weights files and training datasets are not present in the repo. If you are interested, please feel free to contact us: pascal.brunner@carissma.eu
 * Calibration values must be properly tuned depending on the individual scene (_Hint: Maybe will be automated in the future_)
 
 ## Contributing
