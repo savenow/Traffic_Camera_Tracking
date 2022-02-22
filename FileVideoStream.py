@@ -54,3 +54,6 @@ class FileVideoStream():
 	def stop(self):
 		# indicate that the thread should be stopped
 		self.stopped = True
+	
+	def set_timer(self, min_vid_timer):
+		self.stream.set(cv2.CAP_PROP_POS_MSEC, min_vid_timer)

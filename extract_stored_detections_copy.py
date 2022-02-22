@@ -144,7 +144,7 @@ class PostProcess():
         self.file_name = Path(output_video).stem
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
         
-        self.video_cap = cv2.VideoCapture(input_video)
+        self.stream_obj = FileVideoStream(input_video, queueSize=3000)
         self.fvs, (frame_width, frame_height)= FileVideoStream(input_video, queueSize=3000).start()
         time.sleep(1.0)
 
@@ -189,8 +189,7 @@ class PostProcess():
         
         total_frames = int((max_vid_timer - min_vid_timer)/(1000/self.video_fps)) + 1
         pbar = tqdm(total=total_frames)
-
-        self.video_cap.set(cv2.CAP_PROP_POS_MSEC, min_vid_timer)
+        self.stream_obj.set_timer(min_vid_timer=min_vid_timer)
 
         # start the FPS timer
         fps = FPS().start()
