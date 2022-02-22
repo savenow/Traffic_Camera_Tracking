@@ -13,7 +13,12 @@ from tqdm.auto import tqdm
 
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
+
+# threding packages.
+from FileVideoStream import FileVideoStream
 from imutils.video import FPS
+import imutils
+import time
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -140,9 +145,11 @@ class PostProcess():
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
         
         self.video_cap = cv2.VideoCapture(input_video)
-        frame_width = int(self.video_cap.get(3))
-        frame_height = int(self.video_cap.get(4))
+        self.fvs, (frame_width, frame_height)= FileVideoStream(input_video, queueSize=3000).start()
+        time.sleep(1.0)
+
         self.video_fps = 30
+        self.output = output_video
         self.video_writer = cv2.VideoWriter(output_video, cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width,frame_height))
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode)
 
@@ -184,100 +191,105 @@ class PostProcess():
         pbar = tqdm(total=total_frames)
 
         self.video_cap.set(cv2.CAP_PROP_POS_MSEC, min_vid_timer)
+
         # start the FPS timer
         fps = FPS().start()
-        while self.video_cap.isOpened():
-            ret, frame = self.video_cap.read()
-            if ret:
-                vid_timer = int(self.video_cap.get(cv2.CAP_PROP_POS_MSEC))
-            
-                if vid_timer > max_vid_timer:
-                    break
-                
-                pbar.update(1)
-                for data in list_grouped_by_frametimes:
-                    df_frametime = data[0]['Video_Internal_Timer']
-                    
-                    # Checking for interal_timer from .csv file and matching it with the internal timer from video file (For syncing frames)
-                    if df_frametime == vid_timer:
-                        framecounter += 1
-                        #print(f"[INFO] Saving frame {framecounter}")
-                        
-                        for detection in data:
-                            if not pd.isna(detection['Speed']):
-                                # Drawing Trackers
-                                outer_array = []
-                                detection_array = []
-                                x1 = detection['BBOX_TopLeft_x']
-                                y1 = detection['BBOX_TopLeft_y']
-                                x2 = detection['BBOX_BottomRight_x']
-                                y2 = detection['BBOX_BottomRight_y']
-                                detection_array.append(int(x1))
-                                detection_array.append(int(y1))
-                                detection_array.append(int(x2))
-                                detection_array.append(int(y2))
-                                if not pd.isna(detection['Conf_Score']):
-                                    detection_array.append(detection['Conf_Score']/100)    
-                                else:
-                                    detection_array.append(-1)
-                                detection_array.append(detection['Class_ID'])
-                                detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
-                                detection_array.append(detection['Tracker_ID'])
-                                detection_array.append(detection['Speed'])
-                                outer_array.append(detection_array)
-                                image = self.Visualize.drawAll(outer_array, frame, framecounter)
+        
+        # while self.fvs.isOpened():
+        while self.fvs.more():
+            # try:
+                (ret, frame, vid_timer) = self.fvs.read()
+                if ret:
+                    if vid_timer > max_vid_timer:
+                        break
 
-                            elif not pd.isna(detection['Tracker_ID']):
-                                # Drawing Trackers
-                                outer_array = []
-                                detection_array = []
-                                x1 = detection['BBOX_TopLeft_x']
-                                y1 = detection['BBOX_TopLeft_y']
-                                x2 = detection['BBOX_BottomRight_x']
-                                y2 = detection['BBOX_BottomRight_y']
-                                detection_array.append(int(x1))
-                                detection_array.append(int(y1))
-                                detection_array.append(int(x2))
-                                detection_array.append(int(y2))
-                                if not pd.isna(detection['Conf_Score']):
-                                    detection_array.append(detection['Conf_Score']/100)    
-                                else:
-                                    detection_array.append(-1)
-                                detection_array.append(detection['Class_ID'])
-                                detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
-                                detection_array.append(detection['Tracker_ID'])
-                                outer_array.append(detection_array)
-                                image = self.Visualize.drawTracker(outer_array, frame, framecounter)
-                                
-                            elif not pd.isna(detection['Class_ID']):
-                                # Drawing just BBOXes
-                                outer_array = []
-                                detection_array = []
-                                x1 = detection['BBOX_TopLeft_x']
-                                y1 = detection['BBOX_TopLeft_y']
-                                x2 = detection['BBOX_BottomRight_x']
-                                y2 = detection['BBOX_BottomRight_y']
-                                detection_array.append(int(x1))
-                                detection_array.append(int(y1))
-                                detection_array.append(int(x2))
-                                detection_array.append(int(y2))
-                                detection_array.append(detection['Conf_Score']/100)
-                                detection_array.append(detection['Class_ID'])
-                                outer_array.append(detection_array)
-                                image = self.Visualize.drawBBOX(outer_array, frame, framecounter)
-                            else:
-                                # No Detections/Trackers. Just drawing the minimap (if enabled)
-                                image = self.Visualize.drawEmpty(frame, framecounter)
+                    pbar.update(1)
+
+                    for data in list_grouped_by_frametimes:
+                        df_frametime = data[0]['Video_Internal_Timer']
+                        
+                        # Checking for interal_timer from .csv file and matching it with the internal timer from video file (For syncing frames)
+                        if df_frametime == vid_timer:
+                            framecounter += 1
+                            # print(f"[INFO] Saving frame {framecounter}")
                             
-                        self.video_writer.write(image)
-                        fps.update()
-            else:
-                break
+                            for detection in data:
+                                if not pd.isna(detection['Speed']):
+                                    # Drawing Trackers
+                                    outer_array = []
+                                    detection_array = []
+                                    x1 = detection['BBOX_TopLeft_x']
+                                    y1 = detection['BBOX_TopLeft_y']
+                                    x2 = detection['BBOX_BottomRight_x']
+                                    y2 = detection['BBOX_BottomRight_y']
+                                    detection_array.append(int(x1))
+                                    detection_array.append(int(y1))
+                                    detection_array.append(int(x2))
+                                    detection_array.append(int(y2))
+                                    if not pd.isna(detection['Conf_Score']):
+                                        detection_array.append(detection['Conf_Score']/100)    
+                                    else:
+                                        detection_array.append(-1)
+                                    detection_array.append(detection['Class_ID'])
+                                    detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
+                                    detection_array.append(detection['Tracker_ID'])
+                                    detection_array.append(detection['Speed'])
+                                    outer_array.append(detection_array)
+                                    image = self.Visualize.drawAll(outer_array, frame, framecounter)
+
+                                elif not pd.isna(detection['Tracker_ID']):
+                                    # Drawing Trackers
+                                    outer_array = []
+                                    detection_array = []
+                                    x1 = detection['BBOX_TopLeft_x']
+                                    y1 = detection['BBOX_TopLeft_y']
+                                    x2 = detection['BBOX_BottomRight_x']
+                                    y2 = detection['BBOX_BottomRight_y']
+                                    detection_array.append(int(x1))
+                                    detection_array.append(int(y1))
+                                    detection_array.append(int(x2))
+                                    detection_array.append(int(y2))
+                                    if not pd.isna(detection['Conf_Score']):
+                                        detection_array.append(detection['Conf_Score']/100)    
+                                    else:
+                                        detection_array.append(-1)
+                                    detection_array.append(detection['Class_ID'])
+                                    detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
+                                    detection_array.append(detection['Tracker_ID'])
+                                    outer_array.append(detection_array)
+                                    image = self.Visualize.drawTracker(outer_array, frame, framecounter)
+                                    
+                                elif not pd.isna(detection['Class_ID']):
+                                    # Drawing just BBOXes
+                                    outer_array = []
+                                    detection_array = []
+                                    x1 = detection['BBOX_TopLeft_x']
+                                    y1 = detection['BBOX_TopLeft_y']
+                                    x2 = detection['BBOX_BottomRight_x']
+                                    y2 = detection['BBOX_BottomRight_y']
+                                    detection_array.append(int(x1))
+                                    detection_array.append(int(y1))
+                                    detection_array.append(int(x2))
+                                    detection_array.append(int(y2))
+                                    detection_array.append(detection['Conf_Score']/100)
+                                    detection_array.append(detection['Class_ID'])
+                                    outer_array.append(detection_array)
+                                    image = self.Visualize.drawBBOX(outer_array, frame, framecounter)
+                                    image = np.dstack([image, image, image])
+                                else:
+                                    # No Detections/Trackers. Just drawing the minimap (if enabled)
+                                    image = self.Visualize.drawEmpty(frame, framecounter)
+                        
+                            self.video_writer.write(image)
+                            fps.update()
+                else:break
+            # except:None
         pbar.close()
         fps.stop()
         print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
         print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
-        self.video_writer.release()        
+        self.video_writer.release() 
+        self.fvs.stop()        
     
     # Helper functions for step 1: tracker removal
     def get_tracker_IDs(self, dataframe):
