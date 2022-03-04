@@ -556,7 +556,7 @@ class PostProcess():
         df_interpolated_dup = df_interpolated_dup.join(final_ve_tracker_df['Speed'])
         return df_interpolated_dup
 
-    def class_id_matching(self, df):
+    def class_id_matching(self, df, cycle_threshold_speed=23, pedestrian_exclusion_threshold_speed=9):
         """
         Eliminates switching class_id and allocates the one class_id for each tracker
         Processing steps:
@@ -565,12 +565,14 @@ class PostProcess():
         3. If standard deviation is more than 0.35
             3.1 Considering only non-zero speeds for each tracker (Considering speeds only when they are actually moving)
             3.2 Ignoring rows of data if the bbox_coordinates lie within the specified ignorance regions
-            3.3 If mean speed of the tracker is more than 9 km/h, we are excluding the class_id 1 (pedestrian) and assigning the tracker with the most common occurring between escooter and cyclist
-            3.4 If max speed of the tracker is equal to or more than 22 km/h, we are assigning simply class_id 2 (cyclist)
+            3.3 If mean speed of the tracker is more than {pedestrian_exclusion_threshold_speed} km/h, we are excluding the class_id 1 (pedestrian) and assigning the tracker with the most common occurring between escooter and cyclist
+            3.4 If max speed of the tracker is equal to or more than {cycle_threshold_speed} km/h, we are assigning simply class_id 2 (cyclist)
             3.5 If both of the above conditions are not met, we are simply allocating the most frequently occurring Class_ID to the entire tracker (just like in step 2 but now with considerations of 3.1 and 3.2)
 
         Args:
             df (pd.Dataframe): Dataframe with speed data for each tracker
+            cycle_threshold_speed (int): Maximum speed beyond which the only possible class_id is Cyclist
+            pedestrian_exclusion_threshold_speed (int): Average speed beyond which we can exclude the possibilty of pedestrian
 
         Returns:
             final_df (pd.Dataframe): Dataframe with corrected class_id_matching
@@ -610,10 +612,10 @@ class PostProcess():
                 corrected_speed_mean = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].mean()
                 corrected_speed_max = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].max()
                 
-                if corrected_speed_max >= 22:
+                if corrected_speed_max >= cycle_threshold_speed:
                     df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = 2
 
-                elif corrected_speed_mean > 9:
+                elif corrected_speed_mean > pedestrian_exclusion_threshold_speed:
                     keys = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().keys().tolist()
                     counts = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().tolist()
                     for freq in zip(keys, counts):# Ignoring Class_ID = 1 (pedestrian) and assigning the first value (since the counts is already in descending order, the first elements are obviously the more frequently occurring ;)

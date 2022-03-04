@@ -16,7 +16,7 @@ This project is a part of **SaveNoW**, where all these data are used to create a
 ### <u>Object Detection:</u>
 _(Still actively developed..A lot of the parameters could change in future)_
 
-PyTorch based [**YoloV5**](https://github.com/ultralytics/yolov5) framework is used for detection and the model *yolov5l6* is trained on custom dataset of around **89k** images in varied conditions (daylight, rain and night). All the images were manually labelled using CVAT online annotation tool. The model was trained by for 100+ hours using RTX 3090 for 150 epochs and reaches around 95% accuracy.
+PyTorch based [**YoloV5**](https://github.com/ultralytics/yolov5) framework is used for detection and the model *yolov5l6* is trained on custom dataset of around **87k** images in varied conditions (daylight, rain and night). All the images were manually labelled using CVAT online annotation tool. The model was trained by for 100+ hours using RTX 3090 for 600 epochs and reaches around 97% accuracy.
 
 For faster inference speeds, a _TensorRT Engine_ has been built and can infer at **125 fps**
 
