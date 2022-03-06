@@ -139,19 +139,19 @@ class ExtractFromCSV():
         self.groupedData_toVideoWriter(frametime_group_list)
 
 class PostProcess():
-    def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode):
+    def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode, trajectory_update_rate):
         self.detections_dataframe = pd.read_csv(data_file, index_col=[0])
         self.file_name = Path(output_video).stem
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
         
-        self.stream_obj = FileVideoStream(input_video, queueSize=3000)
-        self.fvs, (frame_width, frame_height)= FileVideoStream(input_video, queueSize=3000).start()
+        self.stream_obj = FileVideoStream(input_video, queueSize=6000)
+        self.fvs, (frame_width, frame_height)= FileVideoStream(input_video, queueSize=6000).start()
         time.sleep(1.0)
 
         self.video_fps = 30
         self.output = output_video
         self.video_writer = cv2.VideoWriter(output_video, cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width,frame_height))
-        self.Visualize = Visualizer(enable_minimap, enable_trj_mode)
+        self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate)
 
     def removeErrorTimers(self, df):
         # At the end of .csv file, some erroneous data from tracker has been found with Video_Internal_Timer = 0. The following code snippet would remove them from the dataframe
@@ -658,6 +658,7 @@ def parser_opt():
     parser.add_argument('--output_video', type=str, default=None, help=['path to save result(s)'])
     parser.add_argument('--enable_minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
     parser.add_argument('--enable_trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
+    parser.add_argument('--trajectory_update_rate', type=int, default=30, help='provide a number to update a trajectory after certain frames')
     opt = parser.parse_args()
     print("---- Traffic Camera Tracking (CARISSMA) ----")
     print("---- Post-Processing ----")
