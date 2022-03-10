@@ -24,7 +24,10 @@ try:
 
     assert hasattr(wandb, '__version__')  # verify package import not local dir
     if pkg.parse_version(wandb.__version__) >= pkg.parse_version('0.12.2') and RANK in [0, -1]:
-        wandb_login_success = wandb.login(timeout=30)
+        try:
+            wandb_login_success = wandb.login(timeout=30)
+        except wandb.errors.UsageError:  # known non-TTY terminal issue
+            wandb_login_success = False
         if not wandb_login_success:
             wandb = None
 except (ImportError, AssertionError):
@@ -44,6 +47,7 @@ class Loggers():
                      'metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95',  # metrics
                      'val/box_loss', 'val/obj_loss', 'val/cls_loss',  # val loss
                      'x/lr0', 'x/lr1', 'x/lr2']  # params
+        self.best_keys = ['best/epoch', 'best/precision', 'best/recall', 'best/mAP_0.5', 'best/mAP_0.5:0.95',]
         for k in LOGGERS:
             setattr(self, k, None)  # init empty logger dictionary
         self.csv = True  # always log to csv
@@ -122,6 +126,10 @@ class Loggers():
                 self.tb.add_scalar(k, v, epoch)
 
         if self.wandb:
+            if best_fitness == fi:
+                best_results = [epoch] + vals[3:7]
+                for i, name in enumerate(self.best_keys):
+                    self.wandb.wandb_run.summary[name] = best_results[i]  # log best results in the summary
             self.wandb.log(x)
             self.wandb.end_epoch(best_result=best_fitness == fi)
 
@@ -144,13 +152,17 @@ class Loggers():
                 self.tb.add_image(f.stem, cv2.imread(str(f))[..., ::-1], epoch, dataformats='HWC')
 
         if self.wandb:
+            self.wandb.log({k: v for k, v in zip(self.keys[3:10], results)})  # log best.pt val results
             self.wandb.log({"Results": [wandb.Image(str(f), caption=f.name) for f in files]})
             # Calling wandb.log. TODO: Refactor this into WandbLogger.log_model
             if not self.opt.evolve:
                 wandb.log_artifact(str(best if best.exists() else last), type='model',
                                    name='run_' + self.wandb.wandb_run.id + '_model',
                                    aliases=['latest', 'best', 'stripped'])
-                self.wandb.finish_run()
-            else:
-                self.wandb.finish_run()
-                self.wandb = WandbLogger(self.opt)
+            self.wandb.finish_run()
+
+    def on_params_update(self, params):
+        # Update hyperparams or configs of the experiment
+        # params: A dict containing {param: value} pairs
+        if self.wandb:
+            self.wandb.wandb_run.config.update(params, allow_val_change=True)
