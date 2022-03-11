@@ -86,6 +86,7 @@ class Inference():
             self.output = self.input.split('/')[-1]
         else:
             self.output = output
+            self.file_stem_name = self.output.split('/')[-1][:-4]
         
         if trj_output == None:
             self.trajectory_output = self.input.split('/')[-1]
@@ -340,7 +341,7 @@ class Inference():
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
         
         df = pd.DataFrame(output_data)
-        df.to_csv("Detection_Tracker_Data.csv")
+        df.to_csv(f"{self.file_stem_name}.csv")
 
 
     def parse_opt():
