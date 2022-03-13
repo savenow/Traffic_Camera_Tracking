@@ -1,5 +1,6 @@
 from threading import Thread
 import cv2
+import time
 
 from queue import Queue
 
@@ -25,6 +26,7 @@ class FileVideoStream():
 	def update(self):
 		# keep looping infinitely
 		while True:
+			time.sleep(0.001)
 			# if the thread indicator variable is set, stop the
 			# thread
 			if self.stopped:

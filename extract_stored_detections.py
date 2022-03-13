@@ -134,7 +134,7 @@ class ExtractFromCSV():
         self.groupedData_toVideoWriter(frametime_group_list)
 
 class PostProcess():
-    def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode):
+    def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode, trajectory_update_rate):
         self.detections_dataframe = pd.read_csv(data_file, index_col=[0])
         self.file_name = Path(output_video).stem
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
@@ -144,7 +144,7 @@ class PostProcess():
         frame_height = int(self.video_cap.get(4))
         self.video_fps = 30
         self.video_writer = cv2.VideoWriter(output_video, cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width,frame_height))
-        self.Visualize = Visualizer(enable_minimap, enable_trj_mode)
+        self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate)
 
     def removeErrorTimers(self, df):
         # At the end of .csv file, some erroneous data from tracker has been found with Video_Internal_Timer = 0. The following code snippet would remove them from the dataframe
@@ -202,11 +202,10 @@ class PostProcess():
                     if df_frametime == vid_timer:
                         framecounter += 1
                         #print(f"[INFO] Saving frame {framecounter}")
-                        
+                        outer_array = []
                         for detection in data:
                             if not pd.isna(detection['Speed']):
                                 # Drawing Trackers
-                                outer_array = []
                                 detection_array = []
                                 x1 = detection['BBOX_TopLeft_x']
                                 y1 = detection['BBOX_TopLeft_y']
@@ -225,11 +224,10 @@ class PostProcess():
                                 detection_array.append(detection['Tracker_ID'])
                                 detection_array.append(detection['Speed'])
                                 outer_array.append(detection_array)
-                                image = self.Visualize.drawAll(outer_array, frame, framecounter)
+
 
                             elif not pd.isna(detection['Tracker_ID']):
                                 # Drawing Trackers
-                                outer_array = []
                                 detection_array = []
                                 x1 = detection['BBOX_TopLeft_x']
                                 y1 = detection['BBOX_TopLeft_y']
@@ -246,12 +244,12 @@ class PostProcess():
                                 detection_array.append(detection['Class_ID'])
                                 detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                 detection_array.append(detection['Tracker_ID'])
+                                detection_array.extend([0.0])
                                 outer_array.append(detection_array)
-                                image = self.Visualize.drawTracker(outer_array, frame, framecounter)
+
                                 
                             elif not pd.isna(detection['Class_ID']):
                                 # Drawing just BBOXes
-                                outer_array = []
                                 detection_array = []
                                 x1 = detection['BBOX_TopLeft_x']
                                 y1 = detection['BBOX_TopLeft_y']
@@ -264,11 +262,12 @@ class PostProcess():
                                 detection_array.append(detection['Conf_Score']/100)
                                 detection_array.append(detection['Class_ID'])
                                 outer_array.append(detection_array)
-                                image = self.Visualize.drawBBOX(outer_array, frame, framecounter)
+
                             else:
                                 # No Detections/Trackers. Just drawing the minimap (if enabled)
                                 image = self.Visualize.drawEmpty(frame, framecounter)
-                            
+
+                        image = self.Visualize.drawAll(outer_array, frame, framecounter)    
                         self.video_writer.write(image)
                         fps.update()
             else:
@@ -649,6 +648,7 @@ def parser_opt():
     parser.add_argument('--output_video', type=str, default=None, help=['path to save result(s)'])
     parser.add_argument('--enable_minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
     parser.add_argument('--enable_trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
+    parser.add_argument('--trajectory_update_rate', type=int, default=30, help='provide a number to update a trajectory after certain frames')
     opt = parser.parse_args()
     print("---- Traffic Camera Tracking (CARISSMA) ----")
     print("---- Post-Processing ----")
