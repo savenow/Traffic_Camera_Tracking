@@ -17,9 +17,6 @@ from calibration import Calibration
 # threding packages.
 from FileVideoStream import FileVideoStream
 from imutils.video import FPS
-import threading
-from queue import Queue
-import imutils
 import time
 
 FILE = Path(__file__).resolve()

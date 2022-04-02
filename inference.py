@@ -368,6 +368,7 @@ class Inference():
     
 if __name__ == "__main__":
     opt = Inference.parse_opt()
+    print("---- Traffic Camera Tracking (CARISSMA) ----")
     Inference.main(opt)
     time.sleep(5.0)
     print(" ")
