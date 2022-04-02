@@ -12,6 +12,7 @@ import torch.backends.cudnn as cudnn
 import pandas as pd
 from datetime import datetime, timedelta
 from copy import deepcopy
+import time
 
 import sys
 sys.path.append('./yolo_v5_main_files')
@@ -25,6 +26,8 @@ from sort_yoloV5 import Sort
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
+
+from extract_stored_detections_copy import PostProcess
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -324,15 +327,15 @@ class Inference():
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
 
-                if vid_path != self.output:  # new video
-                    vid_path = self.output
-                    w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                    h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
-                vid_writer.write(frame)      
+                # if vid_path != self.output:  # new video
+                #     vid_path = self.output
+                #     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                #     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                #     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
+                # vid_writer.write(frame)      
 
-        if self.inference_mode == 'Video':    
-            vid_writer.release()
+        # if self.inference_mode == 'Video':    
+        #     vid_writer.release()
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.3fms NMS per image at shape {(1, 3, *im.shape[2:])}, %.1fms Post-processing' % t)
@@ -366,3 +369,10 @@ class Inference():
 if __name__ == "__main__":
     opt = Inference.parse_opt()
     Inference.main(opt)
+    time.sleep(5.0)
+    print(" ")
+    print("---- Post-Processing ----")
+    post = PostProcess(f"{opt.output.split('/')[-1][:-4]}.csv", opt.input,
+                       opt.output, opt.minimap, opt.trj_mode, opt.update_rate)
+
+    post.run()

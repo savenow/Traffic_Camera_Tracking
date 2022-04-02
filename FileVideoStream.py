@@ -1,7 +1,7 @@
 from threading import Thread
 import cv2
 import time
-
+import psutil
 from queue import Queue
 
 class FileVideoStream():
@@ -26,24 +26,31 @@ class FileVideoStream():
 	def update(self):
 		# keep looping infinitely
 		while True:
-			time.sleep(0.001)
+			time.sleep(0.0001)
+			virtualMemoryInfo = psutil.virtual_memory()
+			availableMemory = virtualMemoryInfo.available
+			MEMORY_WARNING = 200*1024*1024
+
 			# if the thread indicator variable is set, stop the
 			# thread
 			if self.stopped:
 				return
 			# otherwise, ensure the queue has room in it
 			if not self.Q.full():
-				# read the next frame from the file
-				(grabbed, frame) = self.stream.read()
-				if grabbed:
-					vid_timer = int(self.stream.get(cv2.CAP_PROP_POS_MSEC))
-				# if the `grabbed` boolean is `False`, then we have
-				# reached the end of the video file
-				if not grabbed:
-					self.stop()
-					return
-				# add the frame to the queue
-				self.Q.put((grabbed,frame,vid_timer))
+				if availableMemory > MEMORY_WARNING:
+					# read the next frame from the file
+					(grabbed, frame) = self.stream.read()
+					if grabbed:
+						vid_timer = int(self.stream.get(cv2.CAP_PROP_POS_MSEC))
+					# if the `grabbed` boolean is `False`, then we have
+					# reached the end of the video file
+					if not grabbed:
+						self.stop()
+						return
+					# add the frame to the queue
+					self.Q.put((grabbed,frame,vid_timer))
+				else:
+					print("memory warning!")
 	
 	def read(self):
 		# return next frame in the queue
