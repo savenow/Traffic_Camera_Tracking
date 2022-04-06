@@ -36,9 +36,9 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class Inference():
-    def __init__(self, input, model_weights, output=None, trj_output=None, 
-                minimap=False, trj_mode=False,  imgSize=[1920, 1920],
-                update_rate = 30):        
+    def __init__(self, input, model_weights, output=None, minimap=False, 
+                trj_mode=False, save_infer_video=False, 
+                imgSize=[1920, 1920], update_rate = 30, **kwargs):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.8
@@ -90,12 +90,8 @@ class Inference():
         else:
             self.output = output
             self.file_stem_name = self.output.split('/')[-1][:-4]
-        
-        if trj_output == None:
-            self.trajectory_output = self.input.split('/')[-1]
-        else:
-            self.trajectory_output = trj_output
 
+        self.save_infer_video = save_infer_video
         self.showTrajectory = trj_mode
 
         # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
@@ -327,15 +323,18 @@ class Inference():
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
 
-                # if vid_path != self.output:  # new video
-                #     vid_path = self.output
-                #     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                #     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                #     vid_writer = cv2.VideoWriter(self.output, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
-                # vid_writer.write(frame)      
+                if self.save_infer_video:
+                    if framecount == 1:  # new video
+                        vid_path = self.output[:-4] + '_justInference' + self.output[-4:]
+                        print(vid_path)
+                        w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                        h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                        vid_writer = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
+                    vid_writer.write(frame)      
 
-        # if self.inference_mode == 'Video':    
-        #     vid_writer.release()
+        if self.inference_mode == 'Video' and self.save_infer_video:    
+            vid_writer.release()
+
         # Print results
         t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.3fms NMS per image at shape {(1, 3, *im.shape[2:])}, %.1fms Post-processing' % t)
@@ -352,11 +351,12 @@ class Inference():
         parser.add_argument('--input', type=str, default=None, help=['path to input file(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
         parser.add_argument('--model_weights', type=str, default=None, help='model\'s weights path(s)')
         parser.add_argument('--output', type=str, default=None, help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
-        parser.add_argument('--trj_output', type=str, default=None, help=['path to save the trjectory result(s)', '.png/.jpg/.jpeg'])
-        parser.add_argument('--minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
-        parser.add_argument('--trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
+        parser.add_argument('--minimap', default=False, action='store_true', help='Option to show the minimap in output -- True (or) False (default: False)')
+        parser.add_argument('--trj_mode', default=False, action='store_true', help='Option to show trajectory in output -- True (or) False (default: False)')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
-        parser.add_argument('--update_rate', type=int, default=30, help='provide a number to update a trajectory after certain frames')
+        parser.add_argument('--update_rate', type=int, default=30, help='Provide a number to update trajectory after certain frames')
+        parser.add_argument('--post_process', default=True, action='store_true', help='Enable/Disable Post-Processing -- True (or) False (default: True)')
+        parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if post_process is enabled, otherwise True)')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
@@ -369,11 +369,14 @@ class Inference():
 if __name__ == "__main__":
     opt = Inference.parse_opt()
     print("---- Traffic Camera Tracking (CARISSMA) ----")
+    if not opt.post_process:
+        opt.save_infer_video = True
     Inference.main(opt)
-    time.sleep(5.0)
-    print(" ")
-    print("---- Post-Processing ----")
-    post = PostProcess(f"{opt.output.split('/')[-1][:-4]}.csv", opt.input,
-                       opt.output, opt.minimap, opt.trj_mode, opt.update_rate)
+    #time.sleep(5.0)
+    print("\n")
+    if opt.post_process:
+        print("---- Post-Processing ----")
+        post = PostProcess(f"{opt.output.split('/')[-1][:-4]}.csv", opt.input,
+                        opt.output, opt.minimap, opt.trj_mode, opt.update_rate)
 
-    post.run()
+        post.run()

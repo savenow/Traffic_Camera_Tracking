@@ -647,7 +647,7 @@ class PostProcess():
         final_df = self.class_id_matching(speed_df)
         final_df.to_csv(f'{self.file_name}_final.csv')
         print('-> Finished Class_ID Matching')
-        print('Now, saving the video ...')
+        print('\nNow, saving the video ...')
 
         # Save video
         groupedByFrametime = self.group_by_internalTimer(final_df)
