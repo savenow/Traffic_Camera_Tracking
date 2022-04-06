@@ -153,6 +153,7 @@ class PostProcess():
         self.video_fps = 30
         self.output = output_video
         self.video_writer = cv2.VideoWriter(output_video, cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width,frame_height))
+       
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate)
 
     def removeErrorTimers(self, df):
@@ -227,7 +228,7 @@ class PostProcess():
                                 detection_array.append(int(x2))
                                 detection_array.append(int(y2))
                                 if not pd.isna(detection['Conf_Score']):
-                                    detection_array.append(detection['Conf_Score']/100)    
+                                    detection_array.append(round(detection['Conf_Score']/100, 5)) 
                                 else:
                                     detection_array.append(-1)
                                 detection_array.append(detection['Class_ID'])
@@ -248,7 +249,7 @@ class PostProcess():
                                 detection_array.append(int(x2))
                                 detection_array.append(int(y2))
                                 if not pd.isna(detection['Conf_Score']):
-                                    detection_array.append(detection['Conf_Score']/100)    
+                                    detection_array.append(round(detection['Conf_Score']/100, 5))    
                                 else:
                                     detection_array.append(-1)
                                 detection_array.append(detection['Class_ID'])
@@ -268,14 +269,14 @@ class PostProcess():
                                 detection_array.append(int(y1))
                                 detection_array.append(int(x2))
                                 detection_array.append(int(y2))
-                                detection_array.append(detection['Conf_Score']/100)
+                                detection_array.append(round(detection['Conf_Score']/100, 5))
                                 detection_array.append(detection['Class_ID'])
                                 outer_array.append(detection_array)
                                 
                             else:
                             #     No Detections/Trackers. Just drawing the minimap (if enabled)
                                 image = self.Visualize.drawEmpty(frame, framecounter)
-                        
+
                         image = self.Visualize.drawAll(outer_array, frame, framecounter)
                         self.video_writer.write(image)
                         fps.update()
@@ -283,8 +284,9 @@ class PostProcess():
             
         pbar.close()
         fps.stop()
-        print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
-        print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+        print("\n[INFO] Finished saving post-processed video !!")
+        print("[INFO] Elasped time: {:.2f}s".format(fps.elapsed()))
+        print("[INFO] Approx. FPS: {:.2f}".format(fps.fps()))
         self.video_writer.release() 
         self.fvs.stop()        
     

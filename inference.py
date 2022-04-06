@@ -50,8 +50,12 @@ class Inference():
         self.device = torch.device('cuda:0')
         self.half = True
         cudnn.benchmark = True
-        self.update_rate = update_rate
         
+        self.update_rate = update_rate
+        self.save_infer_video = save_infer_video
+        self.showTrajectory = trj_mode
+        self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
+
         # Checking input
         if os.path.isfile(input):
             # Further functionality needs to be added for Folder Inference :))
@@ -90,21 +94,6 @@ class Inference():
         else:
             self.output = output
             self.file_stem_name = self.output.split('/')[-1][:-4]
-
-        self.save_infer_video = save_infer_video
-        self.showTrajectory = trj_mode
-
-        # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
-        if self.update_rate > self.fps:
-            self.update_rate = 1
-            print("[INFO] update_rate cannot exceed the video fps")
-        elif self.update_rate <= 0:
-            self.update_rate = self.fps
-            print(f"[INFO] update_rate cannot be negative or 0.")
-        self.update_rate = int(self.fps/self.update_rate)
-        print(f"[INFO] update_rate is set to every {self.update_rate} frame")
-
-        self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
@@ -225,7 +214,6 @@ class Inference():
             if framecount < -1:
                 continue
             elif framecount > 73000:
-            # elif framecount > 100:
                 vid_writer.release()
                 break
             storing_output = {}
@@ -309,7 +297,7 @@ class Inference():
                 # Velocity Estimation
                 velocity_estimation = []
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
-
+                
                 if calculated_velocity:
                     frame = Visualize.drawAll(calculated_velocity, im0, framecount)
                 elif len(self.tracker) > 0:
@@ -368,9 +356,21 @@ class Inference():
     
 if __name__ == "__main__":
     opt = Inference.parse_opt()
+    fps = 30
     print("---- Traffic Camera Tracking (CARISSMA) ----")
+
     if not opt.post_process:
         opt.save_infer_video = True
+    # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
+    if opt.update_rate > fps:
+        opt.update_rate = 1
+        print("[INFO] update_rate cannot exceed the video fps")
+    elif opt.update_rate <= 0:
+        opt.update_rate = fps
+        print(f"[INFO] update_rate cannot be negative or 0.")
+    opt.update_rate = int(fps/opt.update_rate)
+    print(f"[INFO] update_rate is set to every {opt.update_rate} frame")
+
     Inference.main(opt)
     #time.sleep(5.0)
     print("\n")
