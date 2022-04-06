@@ -2,7 +2,6 @@ from threading import Thread
 import cv2
 import time
 import psutil
-import multiprocessing
 from queue import Queue
 
 class FileVideoStream():
