@@ -27,7 +27,8 @@ from visualizer import Visualizer, Minimap
 from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
 
-from extract_stored_detections_copy import PostProcess
+# from extract_stored_detections_copy import PostProcess
+from post_process_mp import PostProcess
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -372,7 +373,6 @@ if __name__ == "__main__":
     print(f"[INFO] update_rate is set to every {opt.update_rate} frame")
 
     Inference.main(opt)
-    #time.sleep(5.0)
     print("\n")
     if opt.post_process:
         print("---- Post-Processing ----")
