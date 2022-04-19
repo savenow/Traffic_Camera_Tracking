@@ -83,7 +83,6 @@ class PostProcess():
         self.video_writer.open("output_{}.mp4".format(num_processes), cv2.VideoWriter_fourcc(*'mp4v'), 30, (self.frame_width,self.frame_height), True)
         pbar = tqdm(total=frame_jump_unit, leave=False)
 
-        # while self.video_cap.isOpened():
         try:
             while framecounter < frame_jump_unit:
                 ret, frame = self.video_cap.read()
@@ -532,10 +531,7 @@ class PostProcess():
                 df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
 
             else:
-                if int(unique_tracker_id) == 6:
-                    print(df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'])
                 df_speed_second_dup = df_speed_dup.copy()
-
                 df_speed_second_dup.loc[((df_speed_second_dup['Tracker_ID'] == unique_tracker_id) & (df_speed_second_dup['Speed'] == 0)), ['Class_ID', 'Speed']] = np.nan
 
                 # Ignorance Regions - BBOX Coordinates within these regions are ignored
@@ -566,19 +562,13 @@ class PostProcess():
                             break
                 
                 else:
-                    print(f'Tracker ID: {unique_tracker_id}')
-                    if int(unique_tracker_id) == 6:
-                        print(df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'])
-                        print(df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode().empty)
-                        print(df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'])
-
+                    # If trackers are empty after removing ignorance regions, then use before-ignorance-region tracker data to get the most frequently occurring Class_ID
                     tracker_class_series = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID']
-                    if tracker_class_series.empty:
+                    
+                    if tracker_class_series.dropna().empty:
                         df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
                     else:
-                        df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = tracker_class_series
-                    
-                    #df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
+                        df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = tracker_class_series.mode()[0]
 
         return df_speed_dup
         
@@ -603,7 +593,6 @@ class PostProcess():
 
         # Save video
         self.groupedByFrametime = self.group_by_internalTimer(self.final_df)
-        # self.groupedData_toVideoWriter(final_df, groupedByFrametime)
         self.multi_process()
 
 def parser_opt():
@@ -621,7 +610,5 @@ def parser_opt():
 
 if __name__ == '__main__':
     opt = parser_opt()
-    # obj = ExtractFromCSV(**vars(opt))
-    # obj.run()
     obj = PostProcess(**vars(opt))
     obj.run()
