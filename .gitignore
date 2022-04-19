@@ -8,3 +8,5 @@ __pycache__**/
 runs**/
 post-process_test.ipynb
 *.csv
+*.mkv
+*.mp4

@@ -28,7 +28,7 @@ from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
 
 # from extract_stored_detections_copy import PostProcess
-from post_process_mp import PostProcess
+from post_process_multiProcess import PostProcess
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -94,7 +94,12 @@ class Inference():
             self.output = self.input.split('/')[-1]
         else:
             self.output = output
-            self.file_stem_name = self.output.split('/')[-1][:-4]
+            __output_path_processing = Path(self.output)
+            self.file_stem_name = str(__output_path_processing.stem)
+            self.parent_directory = str(__output_path_processing.parents[0])
+            #__output_split = self.output.split('/')
+            #self.file_stem_name = __output_split[-1][:-4]
+            #self.file_parent_directory = __output_split[-2]
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
@@ -332,7 +337,7 @@ class Inference():
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
         
         df = pd.DataFrame(output_data)
-        df.to_csv(f"{self.file_stem_name}.csv")
+        df.to_csv(f"{self.parent_directory}/{self.file_stem_name}_raw.csv")
 
 
     def parse_opt():
@@ -375,8 +380,12 @@ if __name__ == "__main__":
     Inference.main(opt)
     print("\n")
     if opt.post_process:
+        __output_path_processing = Path(opt.output)
+        file_stem_name = str(__output_path_processing.stem)
+        parent_directory = str(__output_path_processing.parents[0])
+        
         print("---- Post-Processing ----")
-        post = PostProcess(f"{opt.output.split('/')[-1][:-4]}.csv", opt.input,
+        post = PostProcess(f"{parent_directory}/{file_stem_name}_raw.csv", opt.input,
                         opt.output, opt.minimap, opt.trj_mode, opt.update_rate)
 
         post.run()
