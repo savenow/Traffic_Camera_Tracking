@@ -194,7 +194,7 @@ class PostProcess():
                 f.write("file {} \n".format(t))
 
         # use ffmpeg to combine the video output files
-        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
+        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec nvenc_hevc " + str(self.outputfile_name)
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
         # Remove the temperory output files
