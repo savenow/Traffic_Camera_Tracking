@@ -2,8 +2,8 @@ import os
 import pathlib
 
 video_path = pathlib.Path('/home/mobilitylabextreme002/Desktop/video_capture')
-start_time = 7
-end_time = 8
+start_time = 16
+end_time = 17
 
 print(f'Total number of videos: {len(list(video_path.iterdir()))}')
 
@@ -16,6 +16,7 @@ for videos in video_path.iterdir():
         command = f'python inference.py --input {videos} --model_weights tl_l6_87k_bs24_im1920_e800.engine --output /home/mobilitylabextreme002/Videos/outputs/video_capture_loop/{videos.stem}_mp.mkv --minimap --trj_mode'
         os.system(command)
 
-        if filtered_videos_count >= 5:
+        if filtered_videos_count >= 10:
+            print('Finished successfully !!')
             exit()
 print(f'Filtered number of videos: {filtered_videos_count}')

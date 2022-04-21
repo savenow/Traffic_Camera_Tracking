@@ -13,6 +13,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from copy import deepcopy
 import time
+import shutil
 
 import sys
 sys.path.append('./yolo_v5_main_files')
@@ -42,8 +43,8 @@ class Inference():
                 imgSize=[1920, 1920], update_rate = 30, **kwargs):        
         # Inference Params
         self.img_size = imgSize
-        self.conf_thres = 0.8
-        self.iou_thres = 0.5
+        self.conf_thres = 0.3
+        self.iou_thres = 0.4
         self.agnostic_nms = False
         self.max_det = 1000
         self.classes = None # Filter classes
@@ -95,11 +96,14 @@ class Inference():
         else:
             self.output = output
             __output_path_processing = Path(self.output)
-            self.file_stem_name = str(__output_path_processing.stem)
-            self.parent_directory = str(__output_path_processing.parents[0])
-            #__output_split = self.output.split('/')
-            #self.file_stem_name = __output_split[-1][:-4]
-            #self.file_parent_directory = __output_split[-2]
+            self.file_stem_name = __output_path_processing.stem
+            self.parent_directory = __output_path_processing.parents[0]
+            self.output_dir_path = self.parent_directory / self.file_stem_name
+            if not os.path.exists(self.output_dir_path):
+                os.makedirs(self.output_dir_path)
+            else:
+                shutil.rmtree(self.output_dir_path)           # Removes all the subdirectories!
+                os.makedirs(self.output_dir_path)
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
@@ -219,8 +223,7 @@ class Inference():
             framecount += 1
             if framecount < -1:
                 continue
-            elif framecount > 73000:
-                vid_writer.release()
+            elif framecount > 72000:
                 break
             storing_output = {}
             storing_output["Video_Internal_Timer"]= videoTimer
@@ -337,7 +340,7 @@ class Inference():
         print(f'Average total fps: {round(framecount/round(time_end-time_start, 2), 2)}fps')
         
         df = pd.DataFrame(output_data)
-        df.to_csv(f"{self.parent_directory}/{self.file_stem_name}_raw.csv")
+        df.to_csv(f"{self.output_dir_path}/{str(self.file_stem_name)}_raw.csv")
 
 
     def parse_opt():
@@ -349,7 +352,7 @@ class Inference():
         parser.add_argument('--trj_mode', default=False, action='store_true', help='Option to show trajectory in output -- True (or) False (default: False)')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
         parser.add_argument('--update_rate', type=int, default=30, help='Provide a number to update trajectory after certain frames')
-        parser.add_argument('--post_process', default=True, action='store_true', help='Enable/Disable Post-Processing -- True (or) False (default: True)')
+        parser.add_argument('--post_process', default=True, action='store_false', help='Enable/Disable Post-Processing -- True (or) False (default: True)')
         parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if post_process is enabled, otherwise True)')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
@@ -381,11 +384,12 @@ if __name__ == "__main__":
     print("\n")
     if opt.post_process:
         __output_path_processing = Path(opt.output)
-        file_stem_name = str(__output_path_processing.stem)
-        parent_directory = str(__output_path_processing.parents[0])
-        
+        file_stem_name = __output_path_processing.stem
+        parent_directory = __output_path_processing.parents[0]
+        output_dir_path = parent_directory/file_stem_name
+
         print("---- Post-Processing ----")
-        post = PostProcess(f"{parent_directory}/{file_stem_name}_raw.csv", opt.input,
+        post = PostProcess(f"{output_dir_path}/{str(file_stem_name)}_raw.csv", opt.input,
                         opt.output, opt.minimap, opt.trj_mode, opt.update_rate)
 
         post.run()

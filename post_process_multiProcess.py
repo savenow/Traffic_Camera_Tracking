@@ -28,11 +28,16 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 class PostProcess():
     def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode, trajectory_update_rate):
         self.detections_dataframe = pd.read_csv(data_file, index_col=[0])
-        self.file_name = Path(output_video).stem
-        self.parent_directory = Path(output_video).parents[0]
+        __output_video_original_path = Path(output_video)
+        self.file_name = __output_video_original_path.stem
+        self.parent_directory = __output_video_original_path.parents[0]
+        self.output_directory = self.parent_directory / self.file_name
+        if not os.path.exists(self.output_directory):
+            os.makedirs(self.output_directory)
+
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
         self.input_video = input_video
-        self.outputfile_name = output_video
+        self.outputfile_name = self.output_directory / __output_video_original_path.name
         self.video_fps = 30
         self.num_processes = mp.cpu_count()
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate)
@@ -189,7 +194,7 @@ class PostProcess():
                 f.write("file {} \n".format(t))
 
         # use ffmpeg to combine the video output files
-        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + self.outputfile_name
+        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
         # Remove the temperory output files
@@ -576,18 +581,18 @@ class PostProcess():
         df_duplicate = self.detections_dataframe.copy()
         removed_df = self.remove_tracker(df_duplicate)
         print('\n-> Finished cleaning trackers')
-        removed_df.to_csv(f'{self.parent_directory}/{self.file_name}_cleaned.csv')
+        removed_df.to_csv(f'{self.output_directory}/{self.file_name}_cleaned.csv')
 
         interpolated_df = self.interpolate_data(removed_df)
-        interpolated_df.to_csv(f'{self.parent_directory}/{self.file_name}_interpolated.csv')
+        interpolated_df.to_csv(f'{self.output_directory}/{self.file_name}_interpolated.csv')
         print('-> Finished interpolating missing tracker coordinates')
 
         speed_df = self.velocity_estimation(interpolated_df)
-        speed_df.to_csv(f'{self.parent_directory}/{self.file_name}_speed.csv')
+        speed_df.to_csv(f'{self.output_directory}/{self.file_name}_speed.csv')
         print('-> Finished calculating the velocities')
 
         self.final_df = self.class_id_matching(speed_df)
-        self.final_df.to_csv(f'{self.parent_directory}/{self.file_name}_final.csv')
+        self.final_df.to_csv(f'{self.output_directory}/{self.file_name}_final.csv')
         print('-> Finished Class_ID Matching')
         print('\nNow, saving the video ...')
 
