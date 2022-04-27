@@ -43,10 +43,10 @@ class Inference():
                 imgSize=[1920, 1920], update_rate = 30, **kwargs):        
         # Inference Params
         self.img_size = imgSize
-        self.conf_thres = 0.3
-        self.iou_thres = 0.4
+        self.conf_thres = 0.4
+        self.iou_thres = 0.45
         self.agnostic_nms = False
-        self.max_det = 1000
+        self.max_det = 300
         self.classes = None # Filter classes
 
         self.device = torch.device('cuda:0')
@@ -352,8 +352,8 @@ class Inference():
         parser.add_argument('--trj_mode', default=False, action='store_true', help='Option to show trajectory in output -- True (or) False (default: False)')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
         parser.add_argument('--update_rate', type=int, default=30, help='Provide a number to update trajectory after certain frames')
-        parser.add_argument('--post_process', default=True, action='store_false', help='Enable/Disable Post-Processing -- True (or) False (default: True)')
-        parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if post_process is enabled, otherwise True)')
+        parser.add_argument('--disable_post_process', default=False, action='store_true', help='Disable Post-Processing (default: False)')
+        parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if disable_post_process, otherwise True)')
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     fps = 30
     print("---- Traffic Camera Tracking (CARISSMA) ----")
 
-    if not opt.post_process:
+    if opt.disable_post_process:
         opt.save_infer_video = True
     # setting limit for update_rate -> Number of times/s (Hz) [Example: 1 refers to 1 time per second. 30 refers to 30 times per second]
     if opt.update_rate > fps:
@@ -382,7 +382,7 @@ if __name__ == "__main__":
 
     Inference.main(opt)
     print("\n")
-    if opt.post_process:
+    if not opt.disable_post_process:
         __output_path_processing = Path(opt.output)
         file_stem_name = __output_path_processing.stem
         parent_directory = __output_path_processing.parents[0]
