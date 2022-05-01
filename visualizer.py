@@ -77,7 +77,8 @@ class Visualizer():
             1: ("Pedestrians", (255, 90, 0)), 
             2: ("Cyclists", (90, 255, 0))
         }
-        self.textColor = (255, 255, 255)
+        # self.textColor = (255, 255, 255)
+        self.textColor = (0, 0, 0)
         
         self.count = 0  # variable to update default_dict after certain number of count
 
@@ -155,8 +156,9 @@ class Visualizer():
                 
             color = self.classID_dict[classID][1]
             
-            # Displays the main bbox
-            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            # Displays the main bbox and add overlay to make bbox transparent
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
 
             # Finds the space required for text
             textLabel = f'{self.classID_dict[classID][0]} {conf_score}%'
@@ -165,9 +167,10 @@ class Visualizer():
             )
 
             # Displays BG Box for the text and text itself
-            frame = cv2.rectangle(frame, (x1, y1 - 20), (x1 + w1, y1), color, -1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, y1 - 20), (x1 + w1, y1), color, -1, cv2.LINE_AA)
+            image = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
             frame = cv2.putText(
-                frame, textLabel, (x1, y1 - 5), 
+                image, textLabel, (x1, y1 - 5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
@@ -213,8 +216,9 @@ class Visualizer():
 
             color = self.classID_dict[classID][1]
             
-            # Displays the main bbox
-            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            # Displays the main bbox and add overlay to make bbox transparent
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
 
             # Finds the space required for text
             TrackerLabel = f'Track ID: {tracker_id}'
@@ -227,15 +231,16 @@ class Visualizer():
             )
 
             # Displays BG Box for the text and text itself
-            frame = cv2.rectangle(frame, (x1, y1 - 40), (x1 + w1, y1), color, -1, cv2.LINE_AA)
-            frame = cv2.rectangle(frame, (x1, y1 - 20), (x1 + w2, y1), color, -1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, y1 - 40), (x1 + w1, y1), color, -1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, y1 - 20), (x1 + w2, y1), color, -1, cv2.LINE_AA)
+            image = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
             
             frame = cv2.putText(
-                frame, TrackerLabel, (x1, y1 - 24), 
+                image, TrackerLabel, (x1, y1 - 24), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
             frame = cv2.putText(
-                frame, baseLabel, (x1, y1 - 5), 
+                image, baseLabel, (x1, y1 - 5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
@@ -295,8 +300,9 @@ class Visualizer():
             
             color = self.classID_dict[classID][1] 
             
-            # Displays the main bbox
-            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            # Displays the main bbox and add overlay to make bbox transparent
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (x1, y1), (x2, y2), color, 2)
 
             # Finds the space required for text
             TrackerLabel = f'Track ID: {tracker_id}'
@@ -313,20 +319,21 @@ class Visualizer():
             )
 
             # Displays BG Box for the text and text itself
-            frame = cv2.rectangle(frame, (x1, y1 - 60), (x1 + w1, y1), color, -1, cv2.LINE_AA)
-            frame = cv2.rectangle(frame, (x1, y1 - 40), (x1 + w2, y1), color, -1, cv2.LINE_AA)
-            frame = cv2.rectangle(frame, (x1, y1 - 20), (x1 + w3, y1), color, -1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, y1 - 60), (x1 + w1, y1), color, -1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, y1 - 40), (x1 + w2, y1), color, -1, cv2.LINE_AA)
+            cv2.rectangle(overlay, (x1, y1 - 20), (x1 + w3, y1), color, -1, cv2.LINE_AA)
+            image = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
             
             frame = cv2.putText(
-                frame, TrackerLabel, (x1, y1 - 43), 
+                image, TrackerLabel, (x1, y1 - 43), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
             frame = cv2.putText(
-                frame, speedLabel, (x1, y1 - 24), 
+                image, speedLabel, (x1, y1 - 24), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
             frame = cv2.putText(
-                frame, baseLabel, (x1, y1 - 5), 
+                image, baseLabel, (x1, y1 - 5), 
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
