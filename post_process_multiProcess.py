@@ -502,6 +502,34 @@ class PostProcess():
         df_interpolated_dup = df_interpolated_dup.join(final_ve_tracker_df['Speed'])
         return df_interpolated_dup
 
+    def conf_score_based_class_id_matching(self, df_speed):
+        df_speed_dup = df_speed.copy()
+        unique_trk = df_speed_dup.Tracker_ID.unique()
+        tracker_group = df_speed_dup.groupby('Tracker_ID')
+        cleanlist_trackers = [x for x in unique_trk if str(x) != 'nan']
+        for unique_trk_id in cleanlist_trackers:
+            single_trk_group = tracker_group.get_group(unique_trk_id)
+            
+            # group of different class_ids occuring for the same tracker_id
+            class_ids_in_single_traker = single_trk_group.Class_ID.unique()
+            class_id_grp = single_trk_group.groupby('Class_ID')
+
+            sum_dict = {}
+            for class_id in class_ids_in_single_traker:
+                if str(class_id)!='nan':
+                    single_class_grp = class_id_grp.get_group(class_id)
+                    sum = single_class_grp.Conf_Score.sum()
+                    sum_dict[class_id]= sum
+
+            for key,v in sum_dict.items():
+                if v == max(sum_dict.values()):
+                    corrected_class_id = key
+            
+            # correct the class_id based on maximum confidence_theshold among certain classes for a single tracker_id.
+            df_speed_dup.loc[df_speed_dup['Tracker_ID']==unique_trk_id, 'Class_ID'] = corrected_class_id
+        
+        return df_speed_dup
+
     def class_id_matching(self, df):
         """
         Eliminates switching class_id and allocates the one class_id for each tracker
@@ -553,9 +581,9 @@ class PostProcess():
                         df_speed_second_dup.iloc[index, [df_speed_second_dup.columns.get_loc(c) for c in ['Class_ID', 'Speed']]] = np.nan
 
                 corrected_speed_mean = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].mean()
-                corrected_speed_max = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].max()
+                corrected_speed_95percentile = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].quantile(0.95)
                 
-                if corrected_speed_max >= 22:
+                if corrected_speed_95percentile >= 23:
                     df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = 2
 
                 elif corrected_speed_mean > 9:
@@ -568,12 +596,7 @@ class PostProcess():
                 
                 else:
                     # If trackers are empty after removing ignorance regions, then use before-ignorance-region tracker data to get the most frequently occurring Class_ID
-                    tracker_class_series = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID']
-                    
-                    if tracker_class_series.dropna().empty:
-                        df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
-                    else:
-                        df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = tracker_class_series.mode()[0]
+                    df_speed_dup = self.conf_score_based_class_id_matching(df_speed_dup)
 
         return df_speed_dup
         
