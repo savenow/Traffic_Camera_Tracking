@@ -86,7 +86,7 @@ class PostProcess():
         self.video_cap.set(cv2.CAP_PROP_POS_MSEC, min_vid_timer)
         self.video_cap.set(cv2.CAP_PROP_POS_FRAMES, frame_jump_unit * num_processes)
         self.video_writer.open("output_{}.mp4".format(num_processes), cv2.VideoWriter_fourcc(*'mp4v'), 30, (self.frame_width,self.frame_height), True)
-        pbar = tqdm(total=frame_jump_unit, leave=False)
+        pbar = tqdm(total=frame_jump_unit, leave=False, bar_format='{l_bar}{bar:20}{r_bar}{bar:-10b}')
 
         try:
             while framecounter < frame_jump_unit:
@@ -195,6 +195,7 @@ class PostProcess():
 
         # use ffmpeg to combine the video output files
         ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec nvenc_hevc " + str(self.outputfile_name)
+        # ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
         # Remove the temperory output files
