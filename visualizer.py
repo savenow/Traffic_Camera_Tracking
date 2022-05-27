@@ -309,8 +309,9 @@ class Visualizer():
             color = self.classID_dict[classID][1]
 
             # variables for heading arrow (only in x-y direction)
-            x2_,y2_,x22,y22 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3])
-            ch_x, ch_y = detection[-4],detection[-3]    # chnage in x-y direction from the previous frame 
+            ch_x, ch_y = detection[-4],detection[-3]    # chnage in x-y direction from the previous frame
+            cx1, cy1 = int(detection[-2]), int(detection[-1])
+            x2_,y2_,x22,y22 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3]) 
             cx2 = int((x2_ + x22)/2)
             if classID in (0,1,2):       
                 _, cy2 = sorted((y2_, y22))
@@ -361,26 +362,36 @@ class Visualizer():
                 
 
             # Draw Heading arrows in x-y direction based on the object movement
-            if ch_x>=0 and ch_y>=0:
-                if abs(ch_x) > abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (x22+20,cy2),(255,0,0),1)
-                elif abs(ch_x) < abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (cx2,y22+20),(255,0,0),1)
-            elif ch_x>=0 and ch_y<=0:
-                if abs(ch_x) > abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (x22+20,cy2),(255,0,0),1)
-                elif abs(ch_x) < abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (cx2,y2-20),(255,0,0),1)
-            elif ch_x<=0 and ch_y<=0:
-                if abs(ch_x) > abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (x2-20,cy2),(255,0,0),1)
-                elif abs(ch_x) < abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (cx2,y2-20),(255,0,0),1)
-            elif ch_x<=0 and ch_y>=0:
-                if abs(ch_x) > abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (x2-20,cy2),(255,0,0),1)
-                elif abs(ch_x) < abs(ch_y):
-                    cv2.arrowedLine(frame, (cx2, cy2), (cx2,y22+20),(255,0,0),1)
+            if int(speed)>3:
+                
+                if ch_x>0 and ch_y>0:
+                    if abs(ch_x) > abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (x22+20,cy2),(255,0,0),1)
+                    elif abs(ch_x) < abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y22+40),(255,0,0),1)
+                elif ch_x>0 and ch_y<0:
+                    if abs(ch_x) > abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (x22+20,cy2),(255,0,0),1)
+                    elif abs(ch_x) < abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y2_),(255,0,0),1)
+                elif ch_x<0 and ch_y<0:
+                    if abs(ch_x) > abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (x2_-20,cy2),(255,0,0),1)
+                    elif abs(ch_x) < abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y2_),(255,0,0),1)
+                elif ch_x<0 and ch_y>0:
+                    if abs(ch_x) > abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (x2_-20,cy2),(255,0,0),1)
+                    elif abs(ch_x) < abs(ch_y):
+                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y22+40),(255,0,0),1)
+                # if ch_x>0 and ch_y>0:    
+                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2+50),(255,0,0),1)
+                # elif ch_x>0 and ch_y<0:
+                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2-50),(255,0,0),1)
+                # elif ch_x<0 and ch_y<0:
+                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2-50),(255,0,0),1)
+                # elif ch_x<0 and ch_y>0:   
+                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2+50),(255,0,0),1)
 
             if self.showMinimap:
                 # Converting coordinates from image to map
