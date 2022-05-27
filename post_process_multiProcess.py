@@ -18,6 +18,7 @@ import subprocess as sp
 import multiprocessing as mp
 from os import remove
 import time
+import shutil
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -26,7 +27,7 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class PostProcess():
-    def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode, trajectory_update_rate):
+    def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode, trajectory_update_rate, save_class_frames):
         self.detections_dataframe = pd.read_csv(data_file, index_col=[0])
         __output_video_original_path = Path(output_video)
         self.file_name = __output_video_original_path.stem
@@ -34,13 +35,19 @@ class PostProcess():
         self.output_directory = self.parent_directory / self.file_name
         if not os.path.exists(self.output_directory):
             os.makedirs(self.output_directory)
+        if not os.path.exists(self.output_directory/"Save-frames"):
+            os.makedirs(self.output_directory/"Save-frames")
+        else:
+            shutil.rmtree(self.output_directory/"Save-frames")           # Removes all the subdirectories!
+            os.makedirs(self.output_directory/"Save-frames")
 
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
         self.input_video = input_video
         self.outputfile_name = self.output_directory / __output_video_original_path.name
         self.video_fps = 30
         self.num_processes = mp.cpu_count()
-        self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate)
+        self.trajectory_retain_duration = 100
+        self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         
 
     def removeErrorTimers(self, df):
@@ -171,7 +178,7 @@ class PostProcess():
                                     # No Detections/Trackers. Just drawing the minimap (if enabled)
                                     image = self.Visualize.drawEmpty(frame, framecounter)
 
-                            image = self.Visualize.drawAll(outer_array, frame, framecounter)    
+                            image = self.Visualize.drawAll(outer_array, frame, framecounter, self.output_directory)    
                             self.video_writer.write(image)
 
                 else:
@@ -194,8 +201,8 @@ class PostProcess():
                 f.write("file {} \n".format(t))
 
         # use ffmpeg to combine the video output files
-        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec nvenc_hevc " + str(self.outputfile_name)
-        # ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
+        # ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec nvenc_hevc " + str(self.outputfile_name)
+        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
         # Remove the temperory output files
@@ -550,7 +557,10 @@ class PostProcess():
         Returns:
             final_df (pd.Dataframe): Dataframe with corrected class_id_matching
         """
+        df_speed = df.copy()
         df_speed_dup = df.copy()
+        # Consider only Escooter, Pedestrian, Cyclist classes and empty frames
+        df_speed_dup = df_speed_dup.loc[pd.isna(df_speed_dup['Class_ID']) | df_speed_dup['Class_ID']<3]
         unique_trackers = df_speed_dup.Tracker_ID.unique()
         tracker_group = df_speed_dup.groupby('Tracker_ID')
 
@@ -599,7 +609,11 @@ class PostProcess():
                     # If trackers are empty after removing ignorance regions, then use before-ignorance-region tracker data to get the most frequently occurring Class_ID
                     df_speed_dup = self.conf_score_based_class_id_matching(df_speed_dup)
 
-        return df_speed_dup
+        # Copy only changed indexes to the original dataframe
+        for i in df_speed_dup.index:
+            df_speed.loc[i, :] = df_speed_dup.loc[i, :]
+        
+        return df_speed
         
     def run(self): # Main function of the class which runs all the post-processing and saves the video
         df_duplicate = self.detections_dataframe.copy()
@@ -632,6 +646,8 @@ def parser_opt():
     parser.add_argument('--enable_minimap', default=False, action='store_true', help='provied option for showing the minimap in result -- True (or) False')
     parser.add_argument('--enable_trj_mode', default=False, action='store_true', help='provied option to turn on or off the trjectory recording -- True (or) False')
     parser.add_argument('--trajectory_update_rate', type=int, default=30, help='provide a number to update a trajectory after certain frames')
+    parser.add_argument('--save_class_frames', type=int, default=0, help='Save frames of requied class from 0 to 6 classes\
+                                                    (0-Escooter, 1-Pedestrian, 2-Cyclist, 3-Motorcycle, 4-Car, 5-Truck, 6-Bus)')    
     opt = parser.parse_args()
     print("---- Traffic Camera Tracking (CARISSMA) ----")
     print("---- Post-Processing ----")

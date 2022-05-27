@@ -38,9 +38,9 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class Inference():
-    def __init__(self, input, model_weights, output=None, minimap=False, 
-                trj_mode=False, save_infer_video=False, 
-                imgSize=[1920, 1920], update_rate = 30, **kwargs):        
+    def __init__(self, input, model_weights, output, minimap, 
+                trj_mode, disable_post_process, save_infer_video, 
+                imgSize, update_rate, save_class_frames):        
         # Inference Params
         self.img_size = imgSize
         self.conf_thres = 0.4
@@ -57,6 +57,7 @@ class Inference():
         self.save_infer_video = save_infer_video
         self.showTrajectory = trj_mode
         self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
+        self.save_class_frames = save_class_frames
 
         # Checking input
         if os.path.isfile(input):
@@ -101,14 +102,16 @@ class Inference():
             self.output_dir_path = self.parent_directory / self.file_stem_name
             if not os.path.exists(self.output_dir_path):
                 os.makedirs(self.output_dir_path)
+                os.makedirs(self.output_dir_path/"Save-frames")
             else:
                 shutil.rmtree(self.output_dir_path)           # Removes all the subdirectories!
                 os.makedirs(self.output_dir_path)
+                os.makedirs(self.output_dir_path/"Save-frames")
 
         # Loading Model
         model = DetectMultiBackend(self.model_weights, device=self.device, dnn=None)
         self.stride, self.names, self.pt, self.jit, self.onnx, self.engine = model.stride, model.names, model.pt, model.jit, model.onnx, model.engine
-        self.names = ['Escooter', 'Pedestrian', 'Cyclist']
+        self.names = ['Escooter', 'Pedestrian', 'Cyclist', 'Motorcycle', 'Car', 'Truck', 'Bus']
         
         if self.pt:
             model = model.model.half()
@@ -144,8 +147,13 @@ class Inference():
         
     def VelocityEstimation(self, velocity_array):    
         for detection in self.tracker:
-            center_x = (detection[0] + detection[2])/2        
-            _, max_y = sorted((detection[1], detection[3]))
+            class_id = detection[5]
+            center_x = (detection[0] + detection[2])/2 
+
+            if class_id in (0,1,2):
+                _, max_y = sorted((detection[1], detection[3]))
+            elif class_id in (3,4,5,6):
+                max_y = (detection[1] + detection[3])/2     # Center of bbox for classes other than Escooter, Cyclist, and Pedestrian
 
             trackID = int(detection[9])
             self.trackDict[trackID].append((int(center_x), int(max_y)))
@@ -153,12 +161,14 @@ class Inference():
             if len(self.trackDict[trackID]) > 2: 
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
-
+                ch_x = current_point[0] - previous_point[0]
+                ch_y = current_point[1] - previous_point[1]
+                
                 del self.trackDict[trackID][-2]
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
                 speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
-                output_array = np.append(detection, speed_kmH)
+                output_array = np.append(detection, [speed_kmH, ch_x, ch_y, previous_point[0], previous_point[1]])
                 velocity_array.append(output_array)
 
         return velocity_array
@@ -215,7 +225,7 @@ class Inference():
         ocr = OCR_TimeStamp()
         ocr_vertical_offset = int((1920-1080)/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
         output_data = [] # For writing detection/tracker data to .csv for post processing
-        Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration)
+        Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration, self.save_class_frames)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
         framecount = 0
         time_start = time_sync()
@@ -308,7 +318,7 @@ class Inference():
                 calculated_velocity = self.VelocityEstimation(velocity_estimation)
                 
                 if calculated_velocity:
-                    frame = Visualize.drawAll(calculated_velocity, im0, framecount)
+                    frame = Visualize.drawAll(calculated_velocity, im0, framecount, self.output_dir_path)
                 elif len(self.tracker) > 0:
                     frame = Visualize.drawTracker(self.tracker, im0, framecount)
                 elif len(pred) > 0:
@@ -354,6 +364,8 @@ class Inference():
         parser.add_argument('--update_rate', type=int, default=30, help='Provide a number to update trajectory after certain frames')
         parser.add_argument('--disable_post_process', default=False, action='store_true', help='Disable Post-Processing (default: False)')
         parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if disable_post_process, otherwise True)')
+        parser.add_argument('--save_class_frames', type=int, default=0, help='Save frames of requied class from 0 to 6 classes\
+                                                    (0-Escooter, 1-Pedestrian, 2-Cyclist, 3-Motorcycle, 4-Car, 5-Truck, 6-Bus)')        
         opt = parser.parse_args()
         opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
@@ -390,6 +402,6 @@ if __name__ == "__main__":
 
         print("---- Post-Processing ----")
         post = PostProcess(f"{output_dir_path}/{str(file_stem_name)}_raw.csv", opt.input,
-                        opt.output, opt.minimap, opt.trj_mode, opt.update_rate)
+                        opt.output, opt.minimap, opt.trj_mode, opt.update_rate, opt.save_class_frames)
 
         post.run()
