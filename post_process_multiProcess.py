@@ -134,6 +134,11 @@ class PostProcess():
                                     detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                     detection_array.append(detection['Tracker_ID'])
                                     detection_array.append(detection['Speed'])
+                                    detection_array.append(detection['Arrow_points'][0])
+                                    detection_array.append(detection['Arrow_points'][1])
+                                    detection_array.append(detection['Arrow_points'][2])
+                                    detection_array.append(detection['Arrow_points'][3])
+                                    
                                     outer_array.append(detection_array)
 
 
@@ -156,6 +161,7 @@ class PostProcess():
                                     detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                     detection_array.append(detection['Tracker_ID'])
                                     detection_array.extend([0.0])
+                                    detection_array.extend([0,0,0,0])
                                     outer_array.append(detection_array)
 
                                     
@@ -178,7 +184,7 @@ class PostProcess():
                                     # No Detections/Trackers. Just drawing the minimap (if enabled)
                                     image = self.Visualize.drawEmpty(frame, framecounter)
 
-                            image = self.Visualize.drawAll(outer_array, frame, framecounter, self.output_directory)    
+                            image = self.Visualize.drawAll(outer_array, frame, framecounter, self.output_directory)
                             self.video_writer.write(image)
 
                 else:
@@ -467,47 +473,61 @@ class PostProcess():
         for unique_tracker_id in unique_trackers: # Looping for each unique Tracker_ID
             if not pd.isna(unique_tracker_id):
                 single_tracker_group = tracker_group.get_group(unique_tracker_id)
-                bbox_positions = single_tracker_group[['Video_Internal_Timer', 'BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y']]
+                bbox_positions = single_tracker_group[['Video_Internal_Timer', 'BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y', 'Class_ID']]
                 bbox_positions['BBOX_TopLeft_x'] = bbox_positions['BBOX_TopLeft_x'].rolling(window=rolling_window_size).mean()
                 bbox_positions['BBOX_TopLeft_y'] = bbox_positions['BBOX_TopLeft_y'].rolling(window=rolling_window_size).mean()
                 bbox_positions['BBOX_BottomRight_x'] = bbox_positions['BBOX_BottomRight_x'].rolling(window=rolling_window_size).mean()
                 bbox_positions['BBOX_BottomRight_y'] = bbox_positions['BBOX_BottomRight_y'].rolling(window=rolling_window_size).mean()
+                
 
                 bbox_positions = list(bbox_positions.to_records(index=False))
                 prev_point = -1
                 velocity_estimation = []
 
-                for vid_timer, x1, y1, x2, y2 in bbox_positions: 
-                    center_x = (x1 + x2)/2 
-                    _, max_y = sorted((y1, y2))
+                for vid_timer, x1, y1, x2, y2, class_id in bbox_positions: 
+                    center_x = (x1 + x2)/2
+                    if class_id in (0,1,2): 
+                        _, max_y = sorted((y1, y2))
+                    elif class_id in (3,4,5,6):
+                        max_y = (y1 + y2)/2
                     base_coordinate = camera_calib.projection_pixel_to_world((center_x, max_y)) # Calculating the center of point of the bottom edge of BBOX and calculating it's world coordinates with homography
+                    current_point = (center_x, max_y)
 
                     if prev_point == -1:
                         new_row_withSpeed = {
-                            'Video_Internal_Timer': vid_timer, 'Speed': 0
+                            'Video_Internal_Timer': vid_timer, 'Speed': 0, 'Arrow_points': list([0,0,0,0])
                         }   
                     else:
                         distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
                         speed_kmH = float(distance_metres * self.video_fps * 3.6) # Converting meters/s to km/h and update rate is equal to video's fps (default 30, this is also the rate at which data is sampled in the .csv files)
+                        previous_point = previous_point
+                        ch_x = current_point[0] - previous_point[0]     # change in x direction
+                        ch_y = current_point[1] - previous_point[1]     # change in y direction
+
                         if speed_kmH < 1:
                             speed_kmH = 0 # To prevent small movements in the BBOX_Positions when the VRU's are standing 
 
                         new_row_withSpeed = {
-                            'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH
+                            'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH, 'Arrow_points': [ch_x,ch_y,previous_point[0], previous_point[1]]
                         } 
                     velocity_estimation.append(new_row_withSpeed)
                     prev_point = base_coordinate
+                    previous_point = current_point
+
                     
                 ve_df = pd.DataFrame(velocity_estimation)
                 ve_df['Speed'] = ve_df['Speed'].round(1)
                 
+                
                 # Inserting the 'Speed' Values back into the tracker group
                 single_tracker_group['Speed'] = single_tracker_group['Video_Internal_Timer'].map(ve_df.set_index('Video_Internal_Timer')['Speed'])
+                single_tracker_group['Arrow_points'] = single_tracker_group['Video_Internal_Timer'].map(ve_df.set_index('Video_Internal_Timer')['Arrow_points'])
                 final_tracker_list.append(single_tracker_group)
 
         # Inserting all the modified tracker values back into the originial dataframe
         final_ve_tracker_df = pd.concat(final_tracker_list)
         df_interpolated_dup = df_interpolated_dup.join(final_ve_tracker_df['Speed'])
+        df_interpolated_dup = df_interpolated_dup.join(final_ve_tracker_df['Arrow_points'])
         return df_interpolated_dup
 
     def conf_score_based_class_id_matching(self, df_speed):
