@@ -8,12 +8,14 @@ import argparse
 import math
 from matplotlib import pyplot as plt
 import warnings
+from torch import det
 warnings.filterwarnings("ignore") # To ignore certain warnings from Pandas
 from tqdm.auto import tqdm
 
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
 from imutils.video import FPS
+from collections import namedtuple, defaultdict
 import subprocess as sp
 import multiprocessing as mp
 from os import remove
@@ -48,6 +50,7 @@ class PostProcess():
         self.num_processes = mp.cpu_count()
         self.trajectory_retain_duration = 100
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
+        self.trackDict = defaultdict(list)
         
 
     def removeErrorTimers(self, df):
@@ -122,6 +125,10 @@ class PostProcess():
                                     y1 = detection['BBOX_TopLeft_y']
                                     x2 = detection['BBOX_BottomRight_x']
                                     y2 = detection['BBOX_BottomRight_y']
+                                    center_x = int((int(x1)+int(x2))/2)
+                                    _, center_y = sorted((int(y1),int(y2)))
+                                    trk_id = int(detection['Tracker_ID'])
+                                    self.trackDict[trk_id].append((int(center_x),int(center_y)))
                                     detection_array.append(int(x1))
                                     detection_array.append(int(y1))
                                     detection_array.append(int(x2))
@@ -136,9 +143,9 @@ class PostProcess():
                                     detection_array.append(detection['Speed'])
                                     detection_array.append(detection['Arrow_points'][0])
                                     detection_array.append(detection['Arrow_points'][1])
-                                    detection_array.append(detection['Arrow_points'][2])
-                                    detection_array.append(detection['Arrow_points'][3])
-                                    
+                                    if len(self.trackDict[trk_id])>10:
+                                        detection_array.append(self.trackDict)
+                                        del self.trackDict[trk_id][0]
                                     outer_array.append(detection_array)
 
 
@@ -161,7 +168,7 @@ class PostProcess():
                                     detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                     detection_array.append(detection['Tracker_ID'])
                                     detection_array.extend([0.0])
-                                    detection_array.extend([0,0,0,0])
+                                    detection_array.extend([0,0,0,0,0])
                                     outer_array.append(detection_array)
 
                                     
@@ -501,15 +508,13 @@ class PostProcess():
                         distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
                         speed_kmH = float(distance_metres * self.video_fps * 3.6) # Converting meters/s to km/h and update rate is equal to video's fps (default 30, this is also the rate at which data is sampled in the .csv files)
                         previous_point = previous_point
-                        ch_x = current_point[0] - previous_point[0]     # change in x direction
-                        ch_y = current_point[1] - previous_point[1]     # change in y direction
 
                         if speed_kmH < 1:
                             speed_kmH = 0 # To prevent small movements in the BBOX_Positions when the VRU's are standing 
 
                         new_row_withSpeed = {
-                            'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH, 'Arrow_points': [ch_x,ch_y,previous_point[0], previous_point[1]]
-                        } 
+                            'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH, 'Arrow_points': [previous_point[0], previous_point[1]]
+                        }
                     velocity_estimation.append(new_row_withSpeed)
                     prev_point = base_coordinate
                     previous_point = current_point

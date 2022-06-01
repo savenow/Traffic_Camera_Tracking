@@ -158,17 +158,15 @@ class Inference():
             trackID = int(detection[9])
             self.trackDict[trackID].append((int(center_x), int(max_y)))
             
-            if len(self.trackDict[trackID]) > 2: 
+            if len(self.trackDict[trackID]) > 10: 
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
-                ch_x = self.trackDict[trackID][-1][0] - self.trackDict[trackID][-2][0]
-                ch_y = self.trackDict[trackID][-1][1] - self.trackDict[trackID][-2][1]
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
                 speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
-                output_array = np.append(detection, [speed_kmH, ch_x, ch_y, self.trackDict[trackID][-2][0], self.trackDict[trackID][-2][1]])
+                output_array = np.append(detection, [speed_kmH, self.trackDict[trackID][-2][0], self.trackDict[trackID][-2][1], self.trackDict])
                 velocity_array.append(output_array)
-                del self.trackDict[trackID][-2]
+                del self.trackDict[trackID][0]
 
         return velocity_array
 
