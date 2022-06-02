@@ -5,7 +5,7 @@ from collections import defaultdict
 import os
 
 class Minimap():
-    def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030)), trajectory_update_rate=30, trajectory_retain_duration=100):
+    def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030)), trajectory_update_rate=30, trajectory_retain_duration=250):
         self.homography_CameraToMap = np.load('./map_files/homography_CameraToMap.npy')
        
         if minimap_type == 'Terrain':
@@ -358,7 +358,7 @@ class Visualizer():
             # Save frames of required Class Instances in 20 frames consicutive for eeach tracker_id of that class. 
             if classID == self.save_class_frames and self.count%20==0:
                 output_path_dir = os.path.join(output_path, "Save-frames")
-                cv2.imwrite(fr"{output_path_dir}\{self.classID_dict[classID][0]}-{tracker_id}_frame-{frameCount}.jpg", frame)
+                cv2.imwrite(f"{output_path_dir}/{self.classID_dict[classID][0]}-{tracker_id}_frame-{frameCount}.jpg", frame)
                 
 
             # Draw Heading arrows in x-y direction based on the object movement
