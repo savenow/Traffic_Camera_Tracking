@@ -168,7 +168,7 @@ class PostProcess():
                                     detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
                                     detection_array.append(detection['Tracker_ID'])
                                     detection_array.extend([0.0])
-                                    detection_array.extend([0,0,0,0,0])
+                                    detection_array.extend([0, 0, 0])
                                     outer_array.append(detection_array)
 
                                     
