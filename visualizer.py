@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from collections import defaultdict
 import os
+from kalmanfilter import KalmanFilter
 
 class Minimap():
     def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030)), trajectory_update_rate=30, trajectory_retain_duration=250):
@@ -88,6 +89,7 @@ class Visualizer():
         
         self.count = 0  # variable to update default_dict after certain number of count
         self.save_class_frames = save_class_frames
+        self.kf = KalmanFilter()
 
         if minimap:
             print(f"[INFO] Minimap is set to {minimap}")
@@ -305,18 +307,12 @@ class Visualizer():
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
-            speed = detection[-5]
+            speed = detection[-4]
             color = self.classID_dict[classID][1]
 
-            # variables for heading arrow (only in x-y direction)
-            ch_x, ch_y = detection[-4],detection[-3]    # chnage in x-y direction from the previous frame
-            cx1, cy1 = int(detection[-2]), int(detection[-1])
-            x2_,y2_,x22,y22 = int(detection[0]), int(detection[1]), int(detection[2]), int(detection[3]) 
-            cx2 = int((x2_ + x22)/2)
-            if classID in (0,1,2):       
-                _, cy2 = sorted((y2_, y22))
-            elif classID in (3,4,5,6):
-                cy2 = int((y2_ + y22)/2)  # Center of bbox for classes other than Escooter, Cyclist, and Pedestrian
+            # variables for heading arrow
+            cx1, cy1 = int(detection[-3]), int(detection[-2])   # previous frame points
+            track_pts = detection[-1]
             
             # Displays the main bbox and add overlay to make bbox transparent
             overlay = frame.copy()
@@ -355,43 +351,19 @@ class Visualizer():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
-            # Save frames of required Class Instances in 20 frames consicutive for eeach tracker_id of that class. 
-            if classID == self.save_class_frames and self.count%20==0:
+            # Save frames of required Class Instances in 30 frames consicutive for eeach tracker_id of that class. 
+            if classID == self.save_class_frames and self.count%30==0:
                 output_path_dir = os.path.join(output_path, "Save-frames")
                 cv2.imwrite(f"{output_path_dir}/{self.classID_dict[classID][0]}-{tracker_id}_frame-{frameCount}.jpg", frame)
                 
-
-            # Draw Heading arrows in x-y direction based on the object movement
-            if int(speed)>3:
-                
-                if ch_x>0 and ch_y>0:
-                    if abs(ch_x) > abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (x22+20,cy2),(255,0,0),1)
-                    elif abs(ch_x) < abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y22+40),(255,0,0),1)
-                elif ch_x>0 and ch_y<0:
-                    if abs(ch_x) > abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (x22+20,cy2),(255,0,0),1)
-                    elif abs(ch_x) < abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y2_),(255,0,0),1)
-                elif ch_x<0 and ch_y<0:
-                    if abs(ch_x) > abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (x2_-20,cy2),(255,0,0),1)
-                    elif abs(ch_x) < abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y2_),(255,0,0),1)
-                elif ch_x<0 and ch_y>0:
-                    if abs(ch_x) > abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (x2_-20,cy2),(255,0,0),1)
-                    elif abs(ch_x) < abs(ch_y):
-                        cv2.arrowedLine(frame, (cx2, cy2), (cx2,y22+40),(255,0,0),1)
-                # if ch_x>0 and ch_y>0:    
-                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2+50),(255,0,0),1)
-                # elif ch_x>0 and ch_y<0:
-                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2-50),(255,0,0),1)
-                # elif ch_x<0 and ch_y<0:
-                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2-50),(255,0,0),1)
-                # elif ch_x<0 and ch_y>0:   
-                #     cv2.arrowedLine(frame, (cx1, cy1), (cx2+50,cy2+50),(255,0,0),1)
+            # Use kalman_filter to predict nect point and draw heading arrow in that direction
+            if type(track_pts)==defaultdict:
+                for pt in track_pts[tracker_id]:
+                    predicted = self.kf.predict(pt[0], pt[1])
+                pred = self.kf.predict(predicted[0], predicted[1])
+                pred2 = self.kf.predict(pred[0], pred[1])
+                cv2.arrowedLine(frame, (cx1,cy1), (int(pred[0]),int(pred[1])), (255,0,0),1)
+                 
 
             if self.showMinimap:
                 # Converting coordinates from image to map
