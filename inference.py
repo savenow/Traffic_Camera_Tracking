@@ -43,7 +43,7 @@ class Inference():
                 imgSize, update_rate, save_class_frames):        
         # Inference Params
         self.img_size = imgSize
-        self.conf_thres = 0.3
+        self.conf_thres = 0.35
         self.iou_thres = 0.45
         self.agnostic_nms = False
         self.max_det = 1000
