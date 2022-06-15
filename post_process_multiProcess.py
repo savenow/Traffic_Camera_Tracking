@@ -1,3 +1,4 @@
+from cmath import nan
 import numpy as np
 import pandas as pd
 import cv2
@@ -16,6 +17,8 @@ from visualizer import Visualizer, Minimap
 from calibration import Calibration
 from imutils.video import FPS
 from collections import namedtuple, defaultdict
+from heading_angle import Angle
+from kalmanfilter import KalmanFilter
 import subprocess as sp
 import multiprocessing as mp
 from os import remove
@@ -51,6 +54,9 @@ class PostProcess():
         self.trajectory_retain_duration = 100
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         self.trackDict = defaultdict(list)
+        self.angleDict = defaultdict(list)
+        self.kf = KalmanFilter()
+        self.angle = Angle()
         
 
     def removeErrorTimers(self, df):
@@ -80,6 +86,20 @@ class PostProcess():
             list_grouped_by_frametimes.append(ls)
 
         print("[INFO] Finished grouping the pandas dataframe by frametime")
+        return list_grouped_by_frametimes
+    
+    def group_by_internalTimer_with_index(self, df):
+        vid_timer_gb = df.groupby(by=['Video_Internal_Timer'])
+        unique_vid_timer = df.Video_Internal_Timer.unique()
+        list_grouped_by_frametimes = []
+        
+        for vid_timer in unique_vid_timer:
+            g = vid_timer_gb.get_group(vid_timer)
+            ls = []
+            for index, row in g.iterrows():
+                ls.append([index, row])
+            list_grouped_by_frametimes.append(ls)
+
         return list_grouped_by_frametimes
     
     def groupedData_toVideoWriter(self, num_processes):
@@ -126,7 +146,10 @@ class PostProcess():
                                     x2 = detection['BBOX_BottomRight_x']
                                     y2 = detection['BBOX_BottomRight_y']
                                     center_x = int((int(x1)+int(x2))/2)
-                                    _, center_y = sorted((int(y1),int(y2)))
+                                    if detection['Class_ID'] in [0,1,2]: 
+                                        _, center_y = sorted((int(y1),int(y2)))
+                                    elif detection['Class_ID'] in [3,4,5,6]:
+                                        center_y = (int(y1) + int(y2))/2
                                     trk_id = int(detection['Tracker_ID'])
                                     self.trackDict[trk_id].append((int(center_x),int(center_y)))
                                     detection_array.append(int(x1))
@@ -205,6 +228,74 @@ class PostProcess():
         pbar.close()
         self.video_cap.release()
         self.video_writer.release()        
+
+    def Save_angle_to_csv(self, df_with_index, final_df):
+        last_df = final_df.copy()
+        outer_array = []
+        for data in df_with_index:
+            for detection in data:
+                if not pd.isna(detection[1]['Speed']):
+                    index = detection[0]
+                    frame_time = detection[1]['Video_Internal_Timer']
+                    x1 = detection[1]['BBOX_TopLeft_x']
+                    y1 = detection[1]['BBOX_TopLeft_y']
+                    x2 = detection[1]['BBOX_BottomRight_x']
+                    y2 = detection[1]['BBOX_BottomRight_y']
+                    center_x = int((int(x1)+int(x2))/2)
+                    if detection[1]['Class_ID'] in [0,1,2]: 
+                        _, center_y = sorted((int(y1),int(y2)))
+                    elif detection[1]['Class_ID'] in [3,4,5,6]:
+                        center_y = (int(y1) + int(y2))/2
+                    trk_id = int(detection[1]['Tracker_ID'])
+                    cx1 = int(float(detection[1]['Arrow_points'][0]))
+                    cy1 = int(float(detection[1]['Arrow_points'][1]))
+                    self.angleDict[trk_id].append((int(center_x),int(center_y)))
+
+                    new_row = {
+                                'Index': index,
+                                'Video_Internal_Timer': int(frame_time), 
+                                'Heading_angle': np.nan
+                                }
+
+                    points_ = [[cx1, cy1], [int(center_x), int(center_y)], [x2, cy1]]
+                    if len(self.angleDict[trk_id])<=10:
+                        if detection[1]['Speed']!= 0:
+                            angle_ = self.angle.findangle(points=points_)
+
+                            new_row = {
+                                'Index': index,
+                                'Video_Internal_Timer': int(frame_time), 
+                                'Heading_angle': angle_
+                                } 
+
+                    elif len(self.angleDict[trk_id])>10:
+                        for pt in self.angleDict[trk_id]:
+                            predicted = self.kf.predict(pt[0], pt[1])
+                        del self.angleDict[trk_id][-1]
+
+                        pred = predicted
+                        for i in range(2):
+                            pred = self.kf.predict(pred[0], pred[1])
+
+                        points = [[cx1, cy1], [int(pred[0]), int(pred[1])], [x2, cy1]]
+                        if detection[1]['Speed']!= 0:
+                            angle = self.angle.findangle(points=points)
+
+                            new_row = {
+                                'Index': index,
+                                'Video_Internal_Timer': int(frame_time), 
+                                'Heading_angle': angle
+                                } 
+
+                    outer_array.append(new_row)
+
+        df_angle = pd.DataFrame(outer_array)
+
+        # Copy Angle values to the original dataframe by matching index values
+        for i in df_angle['Index']:
+            last_df.loc[i, 'Heading_angle'] = df_angle.loc[df_angle['Index']==i, 'Heading_angle'].values[0]
+        
+        return last_df
     
     def combine_output_files(self, num_processes):
         # Create a list of output files and store the file names in a txt file
@@ -502,7 +593,7 @@ class PostProcess():
 
                     if prev_point == -1:
                         new_row_withSpeed = {
-                            'Video_Internal_Timer': vid_timer, 'Speed': 0, 'Arrow_points': list([0,0,0,0])
+                            'Video_Internal_Timer': vid_timer, 'Speed': 0, 'Arrow_points': list([0,0])
                         }   
                     else:
                         distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
@@ -657,6 +748,12 @@ class PostProcess():
         self.final_df = self.class_id_matching(speed_df)
         self.final_df.to_csv(f'{self.output_directory}/{self.file_name}_final.csv')
         print('-> Finished Class_ID Matching')
+        # print('\nNow, saving the video ...')
+
+        df_with_index = self.group_by_internalTimer_with_index(self.final_df)
+        df_latest = self.Save_angle_to_csv(df_with_index, self.final_df)
+        df_latest.to_csv(f'{self.output_directory}/{self.file_name}_latest.csv')
+        print('-> Finished Saving Heading_angle')
         print('\nNow, saving the video ...')
 
         # Save video
