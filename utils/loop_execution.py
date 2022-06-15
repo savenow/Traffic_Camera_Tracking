@@ -3,11 +3,11 @@ import pathlib
 
 video_path = pathlib.Path('/home/mobilitylabextreme002/Desktop/video_capture')
 
-start_date = 12
-end_date = 14
+start_date = 8
+end_date = 9
 
-start_time = 00
-end_time = 23
+start_time = 7
+end_time = 8
 
 print(f'Total number of videos: {len(list(video_path.iterdir()))}')
 
