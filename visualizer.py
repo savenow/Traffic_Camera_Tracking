@@ -4,6 +4,7 @@ import numpy as np
 from collections import defaultdict
 import os
 from kalmanfilter import KalmanFilter
+from heading_angle import Angle
 
 class Minimap():
     def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030)), trajectory_update_rate=30, trajectory_retain_duration=250):
@@ -88,8 +89,10 @@ class Visualizer():
         self.textColor = (0, 0, 0)
         
         self.count = 0  # variable to update default_dict after certain number of count
+        self.track_count = 0
         self.save_class_frames = save_class_frames
         self.kf = KalmanFilter()
+        self.angle = Angle()
 
         if minimap:
             print(f"[INFO] Minimap is set to {minimap}")
@@ -352,18 +355,31 @@ class Visualizer():
             )
 
             # Save frames of required Class Instances in 30 frames consicutive for eeach tracker_id of that class. 
-            if classID == self.save_class_frames and self.count%30==0:
+            if classID == self.save_class_frames and self.track_count<2:
                 output_path_dir = os.path.join(output_path, "Save-frames")
-                cv2.imwrite(f"{output_path_dir}/{self.classID_dict[classID][0]}-{tracker_id}_frame-{frameCount}.jpg", frame)
+                cv2.imwrite(fr"{output_path_dir}\{self.classID_dict[classID][0]}-{tracker_id}_count-{self.track_count}.jpg", frame)
+                self.track_count += 1
                 
-            # Use kalman_filter to predict nect point and draw heading arrow in that direction
+            # Use kalman_filter to predict next point and draw heading arrow in that direction
             if type(track_pts)==defaultdict:
                 for pt in track_pts[tracker_id]:
                     predicted = self.kf.predict(pt[0], pt[1])
                 pred = self.kf.predict(predicted[0], predicted[1])
                 pred2 = self.kf.predict(pred[0], pred[1])
-                cv2.arrowedLine(frame, (cx1,cy1), (int(pred[0]),int(pred[1])), (255,0,0),1)
-                 
+                cv2.arrowedLine(frame, (cx1,cy1), (int(pred2[0]),int(pred2[1])), (255,0,0),1)
+                points = [[cx1, cy1], [int(pred2[0]), int(pred2[1])], [x2, cy1]]
+                if speed!= 0:
+                    angle = self.angle.findangle(points=points)
+                    cv2.arrowedLine(frame, (cx1,cy1), (x2, cy1),  (0,0,255),1)
+                    AngleLabel = f'Angle: {angle}'
+                    (w4, h4), _ = cv2.getTextSize(
+                        AngleLabel, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1
+                    )
+                    cv2.rectangle(frame, (x2, y1 + 20), (x2 + w4, y1), color, -1, cv2.LINE_AA)
+                    frame = cv2.putText(
+                    image, AngleLabel, (x2, y1 + 15), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
+                    )     
 
             if self.showMinimap:
                 # Converting coordinates from image to map

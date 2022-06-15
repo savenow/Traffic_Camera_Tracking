@@ -2,27 +2,21 @@ import os
 import pathlib
 
 video_path = pathlib.Path('/home/mobilitylabextreme002/Desktop/video_capture')
-
-start_date = 8
-end_date = 9
-
-start_time = 7
-end_time = 8
+start_time = 17
+end_time = 18
 
 print(f'Total number of videos: {len(list(video_path.iterdir()))}')
 
 filtered_videos_count = 0
 for videos in video_path.iterdir():
-    day_timestamp = int(videos.stem.split('-')[0][:2])
-    month_timstamp = int(videos.stem.split('-')[0][3:5])
     hour_timestamp = int(videos.stem.split('-')[-1][:2])
-    if (hour_timestamp >= start_time and hour_timestamp <= end_time) and (day_timestamp >= start_date and day_timestamp <= end_date):
+    if hour_timestamp >= start_time and hour_timestamp <= end_time:
         filtered_videos_count += 1
         #print(videos)
-        command = f'python inference.py --input {videos} --model_weights yolo_v5_main_files/runs/train/new_classes_filtered/weights/best.engine --output /home/mobilitylabextreme002/Videos/outputs/loop_execution_all/{videos.stem}_allClasses.mkv --minimap --trj_mode'
+        command = f'python inference.py --input {videos} --model_weights tl_l6_87k_bs24_im1920_e800.engine --output /home/mobilitylabextreme002/Videos/outputs/video_capture_loop/{videos.stem}_conf30_iou45.mkv --minimap --trj_mode'
         os.system(command)
 
-        # if filtered_videos_count >= 20:
-        #     print('Finished successfully !!')
-        #     exit()
-print(f'Number of videos inferenced: {filtered_videos_count}')
+        if filtered_videos_count >= 20:
+            print('Finished successfully !!')
+            exit()
+# print(f'Filtered number of videos: {filtered_videos_count}')
