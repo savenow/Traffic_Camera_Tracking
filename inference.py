@@ -43,10 +43,10 @@ class Inference():
                 imgSize, update_rate, save_class_frames):        
         # Inference Params
         self.img_size = imgSize
-        self.conf_thres = 0.4
+        self.conf_thres = 0.35
         self.iou_thres = 0.45
         self.agnostic_nms = False
-        self.max_det = 300
+        self.max_det = 1000
         self.classes = None # Filter classes
 
         self.device = torch.device('cuda:0')
@@ -56,7 +56,7 @@ class Inference():
         self.update_rate = update_rate
         self.save_infer_video = save_infer_video
         self.showTrajectory = trj_mode
-        self.trajectory_retain_duration = 100 # Number of frames the trajectory for each tracker id must be retained before removal
+        self.trajectory_retain_duration = 250 # Number of frames the trajectory for each tracker id must be retained before removal
         self.save_class_frames = save_class_frames
 
         # Checking input

@@ -51,7 +51,7 @@ class PostProcess():
         self.outputfile_name = self.output_directory / __output_video_original_path.name
         self.video_fps = 30
         self.num_processes = mp.cpu_count()
-        self.trajectory_retain_duration = 100
+        self.trajectory_retain_duration = 250
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         self.trackDict = defaultdict(list)
         self.angleDict = defaultdict(list)
@@ -664,7 +664,7 @@ class PostProcess():
             3.1 Considering only non-zero speeds for each tracker (Considering speeds only when they are actually moving)
             3.2 Ignoring rows of data if the bbox_coordinates lie within the specified ignorance regions
             3.3 If mean speed of the tracker is more than 9 km/h, we are excluding the class_id 1 (pedestrian) and assigning the tracker with the most common occurring between escooter and cyclist
-            3.4 If max speed of the tracker is equal to or more than 22 km/h, we are assigning simply class_id 2 (cyclist)
+            3.4 If 95-percentile of max speed of the tracker is equal to or more than 23 km/h, we are assigning simply class_id 2 (cyclist)
             3.5 If both of the above conditions are not met, we are simply allocating the most frequently occurring Class_ID to the entire tracker (just like in step 2 but now with considerations of 3.1 and 3.2)
 
         Args:
@@ -685,10 +685,11 @@ class PostProcess():
             single_tracker_group = tracker_group.get_group(unique_tracker_id)
             
             std_class_ID = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].std() 
+            freq_occuring_class_id = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
 
             if std_class_ID < 0.35:
                 # Allocating the most frequently occurring class_id
-                df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
+                df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = freq_occuring_class_id
 
             else:
                 df_speed_second_dup = df_speed_dup.copy()
@@ -701,25 +702,30 @@ class PostProcess():
                 for index, row in single_tracker_group.iterrows():
                     x1, y1, x2, y2 = row['BBOX_TopLeft_x'], row['BBOX_TopLeft_y'], row['BBOX_BottomRight_x'], row['BBOX_BottomRight_y']
                     center_x = (x1+x2)/2
-                    _, max_y = sorted((y1, y2))
-                    is_bbox_present_right = cv2.pointPolygonTest(right_section, (center_x, max_y), False)
-                    is_bbox_present_Topleft = cv2.pointPolygonTest(top_left_corner, (center_x, max_y), False)
+                    if freq_occuring_class_id in [0, 1, 2]:
+                        _, y = sorted((y1, y2))
+                    else:
+                        y = (y1+y2)/2
+
+                    is_bbox_present_right = cv2.pointPolygonTest(right_section, (center_x, y), False)
+                    is_bbox_present_Topleft = cv2.pointPolygonTest(top_left_corner, (center_x, y), False)
                     if (is_bbox_present_right == 1 or is_bbox_present_Topleft == 1): # Ignoring bbox coordinates present inside the ignorance regions
                         df_speed_second_dup.iloc[index, [df_speed_second_dup.columns.get_loc(c) for c in ['Class_ID', 'Speed']]] = np.nan
 
                 corrected_speed_mean = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].mean()
                 corrected_speed_95percentile = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].quantile(0.95)
                 
-                if corrected_speed_95percentile >= 23:
-                    df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = 2
+                if freq_occuring_class_id in [0, 1, 2]:
+                    if corrected_speed_95percentile >= 23:
+                        df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = 2
 
-                elif corrected_speed_mean > 9:
-                    keys = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().keys().tolist()
-                    counts = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().tolist()
-                    for freq in zip(keys, counts):# Ignoring Class_ID = 1 (pedestrian) and assigning the first value (since the counts is already in descending order, the first elements are obviously the more frequently occurring ;)
-                        if keys != 1: 
-                            df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = freq[0]
-                            break
+                    elif corrected_speed_mean > 9:
+                        keys = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().keys().tolist()
+                        counts = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().tolist()
+                        for freq in zip(keys, counts):# Ignoring Class_ID = 1 (pedestrian) and assigning the first value (since the counts is already in descending order, the first elements are obviously the more frequently occurring ;)
+                            if keys != 1: 
+                                df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = freq[0]
+                                break
                 
                 else:
                     # If trackers are empty after removing ignorance regions, then use before-ignorance-region tracker data to get the most frequently occurring Class_ID

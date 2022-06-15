@@ -7,7 +7,7 @@ from kalmanfilter import KalmanFilter
 from heading_angle import Angle
 
 class Minimap():
-    def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030)), trajectory_update_rate=30, trajectory_retain_duration=100):
+    def __init__(self, minimap_type='Terrain', minimap_coords=((1423, 710), (1865, 1030)), trajectory_update_rate=30, trajectory_retain_duration=250):
         self.homography_CameraToMap = np.load('./map_files/homography_CameraToMap.npy')
        
         if minimap_type == 'Terrain':
