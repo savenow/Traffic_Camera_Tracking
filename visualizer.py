@@ -354,10 +354,11 @@ class Visualizer():
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, self.textColor, 1, cv2.LINE_AA
             )
 
-            # Save frames of required Class Instances in 30 frames consicutive for eeach tracker_id of that class. 
+            # Save frames of required Class Instances in 30 frames consecutive for each tracker_id of that class. 
             if classID == self.save_class_frames and self.track_count<2:
-                output_path_dir = os.path.join(output_path, "Save-frames")
-                cv2.imwrite(fr"{output_path_dir}\{self.classID_dict[classID][0]}-{tracker_id}_count-{self.track_count}.jpg", frame)
+                _output_path_dir = os.path.join(output_path, "Save-frames")
+                _output_fileName = os.path.join(_output_path_dir, f"{self.classID_dict[classID][0]}-{tracker_id}_count-{self.track_count}.jpg")
+                cv2.imwrite(_output_fileName, frame)
                 self.track_count += 1
                 
             # Use kalman_filter to predict next point and draw heading arrow in that direction
