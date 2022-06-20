@@ -2,21 +2,32 @@ import os
 import pathlib
 
 video_path = pathlib.Path('/home/mobilitylabextreme002/Desktop/video_capture')
-# start_time = 17
-# end_time = 18
+output_path = pathlib.Path('/home/mobilitylabextreme002/Videos/outputs/loop_execution_2_6_to_9_6')
 
-print(f'Total number of videos: {len(list(video_path.iterdir()))}')
+month = '06_2022'
+day_start = 2
+day_end = 9
 
 filtered_videos_count = 0
-for videos in video_path.iterdir():
-    # hour_timestamp = int(videos.stem.split('-')[-1][:2])
-    # if hour_timestamp >= start_time and hour_timestamp <= end_time:
-    filtered_videos_count += 1
-    #print(videos)
-    command = f'python inference.py --input {videos} --model_weights yolo_v5_main_files/runs/train/new_classes_filtered/weights/best.engine --output /home/mobilitylabextreme002/Videos/outputs/loop_execution_all/{videos.stem}.mkv --minimap --trj_mode'
-    os.system(command)
+for month_folders in video_path.iterdir():
+    if month_folders.stem == month:
+        month_folder_output_path = output_path / month
+        if not os.path.isdir(month_folder_output_path):
+            os.mkdir(month_folder_output_path)
 
-    # if filtered_videos_count >= 20:
-    #     print('Finished successfully !!')
-    #     exit()
-# print(f'Filtered number of videos: {filtered_videos_count}')
+        month_folder_path = video_path / month
+        for day_folders in month_folder_path.iterdir():
+            num_day = int(str(day_folders.stem)[:2])
+            if num_day >= day_start and num_day <= day_end:
+                #print(day_folders)
+                
+                day_folder_output_path = month_folder_output_path / f"{str(day_folders.stem)[:2]}_{month}"
+                if not os.path.isdir(day_folder_output_path):
+                    os.mkdir(day_folder_output_path)
+                
+                for input_videos in day_folders.iterdir():
+                    final_video_output_path = str(day_folder_output_path / input_videos.stem) + ".mkv"
+                    command = f'python inference.py --input {input_videos} --model_weights yolo_v5_main_files/runs/train/new_classes_filtered/weights/best.engine --output {final_video_output_path} --minimap --trj_mode'
+                    #print(command)
+                    os.system(command)
+        
