@@ -10,3 +10,4 @@ post-process_test.ipynb
 *.csv
 *.mkv
 *.mp4
+*.out

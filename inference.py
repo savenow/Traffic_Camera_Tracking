@@ -83,6 +83,7 @@ class Inference():
                 self.inference_backend = 'PyTorch'
             elif model_weights[-7:] == '.engine':
                 self.model_weights = model_weights
+                self.img_size = [1088, 1920]
                 self.inference_backend = 'TensorRT'
             else:
                 print(f"Invalid Weights file. {model_weights} does not end with '.engine' or '.pt'")
@@ -220,7 +221,7 @@ class Inference():
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
-        ocr_vertical_offset = int((1920-1080)/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
+        ocr_vertical_offset = int((1088-1080)/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
         output_data = [] # For writing detection/tracker data to .csv for post processing
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration, self.save_class_frames)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
@@ -300,7 +301,6 @@ class Inference():
                 self.UpdateTracker(pred)
                 
                 # Storing values for post-processing
-                
                 if len(self.tracker) > 0:
                     output_data.extend(self.UpdateStorage_withTracker(storing_output))
                 elif len(pred) > 0:
@@ -310,27 +310,21 @@ class Inference():
                     print("No Trackers/Predictions")
                     output_data.append(storing_output)
 
-                # Velocity Estimation
-                velocity_estimation = []
-                calculated_velocity = self.VelocityEstimation(velocity_estimation)
-                
-                if calculated_velocity:
-                    frame = Visualize.drawAll(calculated_velocity, im0, framecount, self.output_dir_path)
-                elif len(self.tracker) > 0:
-                    frame = Visualize.drawTracker(self.tracker, im0, framecount)
-                elif len(pred) > 0:
-                    frame = Visualize.drawBBOX(pred, im0, framecount)
-                else:
-                    frame = Visualize.drawEmpty(im0, framecount)
-                   
                 t5 = time_sync()
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
 
                 if self.save_infer_video:
+                    if len(self.tracker) > 0:
+                        frame = Visualize.drawTracker(self.tracker, im0, framecount)
+                    elif len(pred) > 0:
+                        frame = Visualize.drawBBOX(pred, im0, framecount)
+                    else:
+                        frame = Visualize.drawEmpty(im0, framecount)
+
                     if framecount == 1:  # new video
                         vid_path = self.output[:-4] + '_justInference' + self.output[-4:]
-                        print(vid_path)
+                        print(f"Video saving to : {vid_path}")
                         w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         vid_writer = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
