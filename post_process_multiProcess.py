@@ -584,10 +584,15 @@ class PostProcess():
 
                 for vid_timer, x1, y1, x2, y2, class_id in bbox_positions: 
                     center_x = (x1 + x2)/2
-                    if class_id in (0,1,2): 
+
+                    if str(class_id)!='nan':
+                        if class_id in (0,1,2): 
+                            _, max_y = sorted((y1, y2))
+                        elif class_id in (3,4,5,6):
+                            max_y = (y1 + y2)/2
+                    else:
                         _, max_y = sorted((y1, y2))
-                    elif class_id in (3,4,5,6):
-                        max_y = (y1 + y2)/2
+                    
                     base_coordinate = camera_calib.projection_pixel_to_world((center_x, max_y)) # Calculating the center of point of the bottom edge of BBOX and calculating it's world coordinates with homography
                     current_point = (center_x, max_y)
 
@@ -601,7 +606,7 @@ class PostProcess():
                         previous_point = previous_point
 
                         if speed_kmH < 1:
-                            speed_kmH = 0 # To prevent small movements in the BBOX_Positions when the VRU's are standing 
+                            speed_kmH =  0 # To prevent small movements in the BBOX_Positions when the VRU's are standing
 
                         new_row_withSpeed = {
                             'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH, 'Arrow_points': [previous_point[0], previous_point[1]]
