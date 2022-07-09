@@ -42,6 +42,7 @@ class Inference():
                 trj_mode, disable_post_process, save_infer_video, 
                 imgSize, update_rate, save_class_frames):        
         # Inference Params
+        self.target_resolution = [1080, 1920]
         self.img_size = imgSize
         self.conf_thres = 0.35
         self.iou_thres = 0.45
@@ -83,7 +84,6 @@ class Inference():
                 self.inference_backend = 'PyTorch'
             elif model_weights[-7:] == '.engine':
                 self.model_weights = model_weights
-                self.img_size = [1088, 1920]
                 self.inference_backend = 'TensorRT'
             else:
                 print(f"Invalid Weights file. {model_weights} does not end with '.engine' or '.pt'")
@@ -221,7 +221,7 @@ class Inference():
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
-        ocr_vertical_offset = int((1088-1080)/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
+        ocr_vertical_offset = int((self.img_size[0]-self.target_resolution[0])/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
         output_data = [] # For writing detection/tracker data to .csv for post processing
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration, self.save_class_frames)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
@@ -351,14 +351,14 @@ class Inference():
         parser.add_argument('--output', type=str, default=None, help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
         parser.add_argument('--minimap', default=False, action='store_true', help='Option to show the minimap in output -- True (or) False (default: False)')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='Option to show trajectory in output -- True (or) False (default: False)')
-        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
+        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1088, 1920], help='inference size h,w')
         parser.add_argument('--update_rate', type=int, default=30, help='Provide a number to update trajectory after certain frames')
         parser.add_argument('--disable_post_process', default=False, action='store_true', help='Disable Post-Processing (default: False)')
         parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if disable_post_process, otherwise True)')
         parser.add_argument('--save_class_frames', type=int, default=0, help='Save frames of requied class from 0 to 6 classes\
                                                     (0-Escooter, 1-Pedestrian, 2-Cyclist, 3-Motorcycle, 4-Car, 5-Truck, 6-Bus)')        
         opt = parser.parse_args()
-        opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
+        #opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
         return opt
 
