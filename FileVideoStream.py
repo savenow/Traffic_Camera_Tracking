@@ -5,7 +5,7 @@ import psutil
 from queue import Queue
 
 class FileVideoStream():
-	def __init__(self, path, queueSize=2000):
+	def __init__(self, path, queueSize=1000):
 		# initialize the file video stream along with the boolean
 		# used to indicate if the thread should be stopped or not
 		self.stream = cv2.VideoCapture(path)

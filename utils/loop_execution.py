@@ -18,7 +18,7 @@ for month_folders in video_path.iterdir():
         month_folder_path = video_path / month
         for day_folders in month_folder_path.iterdir():
             num_day = int(str(day_folders.stem)[:2])
-            if num_day >= day_start and num_day <= day_end:
+            if num_day in [2, 3, 4, 5, 7, 8, 9]:
                 #print(day_folders)
                 
                 day_folder_output_path = month_folder_output_path / f"{str(day_folders.stem)[:2]}_{month}"
