@@ -310,7 +310,7 @@ class Visualizer():
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
-            speed = detection[-4]
+            speed = detection[10]
             color = self.classID_dict[classID][1]
 
             # variables for heading arrow
