@@ -162,6 +162,8 @@ class Inference():
             if len(self.trackDict[trackID]) > 10: 
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
+                previous_point = (previous_point[0],previous_point[1])
+                current_point = (current_point[0],current_point[1])
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
                 speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
@@ -299,7 +301,7 @@ class Inference():
             elif self.inference_mode == 'Video':
                 # Update the tracker
                 self.UpdateTracker(pred)
-                
+
                 # Storing values for post-processing
                 if len(self.tracker) > 0:
                     output_data.extend(self.UpdateStorage_withTracker(storing_output))

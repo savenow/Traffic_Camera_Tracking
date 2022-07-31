@@ -36,7 +36,7 @@ class Calibration():
         position = s * position_inv_rotation_cam_pixel
         full_position = position - self.rotation_mtx.transpose().dot(self.translation_mtx)
 
-        return (full_position[0, 0] + self.OFFSET_X_WORLD, full_position[1, 0] + self.OFFSET_Y_WORLD)
+        return ([full_position[0, 0] + self.OFFSET_X_WORLD, full_position[1, 0] + self.OFFSET_Y_WORLD, full_position[2, 0]])
 
     def projection_world_to_pixel(self, world_position):
         world_position.shape = (3, 1)
