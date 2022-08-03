@@ -10,4 +10,8 @@ post-process_test.ipynb
 *.csv
 *.mkv
 *.mp4
+<<<<<<< HEAD
 *.ipynb
+=======
+*.out
+>>>>>>> 1ea562170d95f928df6f38621408fb49d86cb7cc

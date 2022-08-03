@@ -310,7 +310,7 @@ class Visualizer():
             conf_score = round(detection[4] * 100, 1)
             classID = int(detection[5])
             tracker_id = int(detection[9])
-            speed = detection[-4]
+            speed = detection[10]
             color = self.classID_dict[classID][1]
 
             # variables for heading arrow
@@ -368,11 +368,29 @@ class Visualizer():
                 pred = self.kf.predict(predicted[0], predicted[1])
                 pred2 = self.kf.predict(pred[0], pred[1])
                 cv2.arrowedLine(frame, (cx1,cy1), (int(pred2[0]),int(pred2[1])), (255,0,0),1)
-                points = [[cx1, cy1], [int(pred2[0]), int(pred2[1])], [x2, cy1]]
-                if speed!= 0:
+                points = [[cx1, cy1], [int(pred2[0]), int(pred2[1])], [1920, cy1]]
+                if speed>3:
                     angle = self.angle.findangle(points=points)
-                    cv2.arrowedLine(frame, (cx1,cy1), (x2, cy1),  (0,0,255),1)
-                    AngleLabel = f'Angle: {angle}'
+                    if angle>10 and angle<=80:
+                        direction = "NE"
+                    elif angle>80 and angle<=100:
+                        direction = "N"
+                    elif angle>100 and angle<=170:
+                        direction = "NW"
+                    elif angle>170 and angle<=190:
+                        direction = "W"
+                    elif angle>190 and angle<=260:
+                        direction = "SW"
+                    elif angle>260 and angle<=280:
+                        direction = "S"
+                    elif angle>280 and angle<=350:
+                        direction = "SE"
+                    elif angle>350 and angle<=360:
+                        direction = "E"
+                    elif angle>=0 and angle<=10:
+                        direction = "E"
+                    
+                    AngleLabel = f'Angle: {angle}, {direction}'
                     (w4, h4), _ = cv2.getTextSize(
                         AngleLabel, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1
                     )

@@ -42,6 +42,7 @@ class Inference():
                 trj_mode, disable_post_process, save_infer_video, 
                 imgSize, update_rate, save_class_frames):        
         # Inference Params
+        self.target_resolution = [1080, 1920]
         self.img_size = imgSize
         self.conf_thres = 0.35
         self.iou_thres = 0.45
@@ -161,6 +162,8 @@ class Inference():
             if len(self.trackDict[trackID]) > 10: 
                 previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
                 current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
+                previous_point = (previous_point[0],previous_point[1])
+                current_point = (current_point[0],current_point[1])
 
                 distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
                 speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
@@ -220,7 +223,7 @@ class Inference():
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
-        ocr_vertical_offset = int((1920-1080)/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
+        ocr_vertical_offset = int((self.img_size[0]-self.target_resolution[0])/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
         output_data = [] # For writing detection/tracker data to .csv for post processing
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration, self.save_class_frames)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
@@ -298,9 +301,8 @@ class Inference():
             elif self.inference_mode == 'Video':
                 # Update the tracker
                 self.UpdateTracker(pred)
-                
+
                 # Storing values for post-processing
-                
                 if len(self.tracker) > 0:
                     output_data.extend(self.UpdateStorage_withTracker(storing_output))
                 elif len(pred) > 0:
@@ -310,27 +312,21 @@ class Inference():
                     print("No Trackers/Predictions")
                     output_data.append(storing_output)
 
-                # Velocity Estimation
-                velocity_estimation = []
-                calculated_velocity = self.VelocityEstimation(velocity_estimation)
-                
-                if calculated_velocity:
-                    frame = Visualize.drawAll(calculated_velocity, im0, framecount, self.output_dir_path)
-                elif len(self.tracker) > 0:
-                    frame = Visualize.drawTracker(self.tracker, im0, framecount)
-                elif len(pred) > 0:
-                    frame = Visualize.drawBBOX(pred, im0, framecount)
-                else:
-                    frame = Visualize.drawEmpty(im0, framecount)
-                   
                 t5 = time_sync()
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
 
                 if self.save_infer_video:
+                    if len(self.tracker) > 0:
+                        frame = Visualize.drawTracker(self.tracker, im0, framecount)
+                    elif len(pred) > 0:
+                        frame = Visualize.drawBBOX(pred, im0, framecount)
+                    else:
+                        frame = Visualize.drawEmpty(im0, framecount)
+
                     if framecount == 1:  # new video
                         vid_path = self.output[:-4] + '_justInference' + self.output[-4:]
-                        print(vid_path)
+                        print(f"Video saving to : {vid_path}")
                         w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                         vid_writer = cv2.VideoWriter(vid_path, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (w, h))
@@ -357,14 +353,14 @@ class Inference():
         parser.add_argument('--output', type=str, default=None, help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
         parser.add_argument('--minimap', default=False, action='store_true', help='Option to show the minimap in output -- True (or) False (default: False)')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='Option to show trajectory in output -- True (or) False (default: False)')
-        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1920], help='inference size h,w')
+        parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1088, 1920], help='inference size h,w')
         parser.add_argument('--update_rate', type=int, default=30, help='Provide a number to update trajectory after certain frames')
         parser.add_argument('--disable_post_process', default=False, action='store_true', help='Disable Post-Processing (default: False)')
         parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if disable_post_process, otherwise True)')
         parser.add_argument('--save_class_frames', type=int, default=0, help='Save frames of requied class from 0 to 6 classes\
                                                     (0-Escooter, 1-Pedestrian, 2-Cyclist, 3-Motorcycle, 4-Car, 5-Truck, 6-Bus)')        
         opt = parser.parse_args()
-        opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
+        #opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)
         return opt
 

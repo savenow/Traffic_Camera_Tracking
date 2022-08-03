@@ -50,7 +50,7 @@ class PostProcess():
         self.input_video = input_video
         self.outputfile_name = self.output_directory / __output_video_original_path.name
         self.video_fps = 30
-        self.num_processes = int(mp.cpu_count() * 0.75)
+        self.num_processes = int(mp.cpu_count())# * 0.4)
         self.trajectory_retain_duration = 250
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         self.trackDict = defaultdict(list)
@@ -231,10 +231,12 @@ class PostProcess():
 
     def Save_angle_to_csv(self, df_with_index, final_df):
         last_df = final_df.copy()
-        outer_array = []
+        outer_array_2 = []
         for data in df_with_index:
+            outer_array = []
             for detection in data:
                 if not pd.isna(detection[1]['Speed']):
+                    detection_array = []
                     index = detection[0]
                     frame_time = detection[1]['Video_Internal_Timer']
                     x1 = detection[1]['BBOX_TopLeft_x']
@@ -246,50 +248,63 @@ class PostProcess():
                         _, center_y = sorted((int(y1),int(y2)))
                     elif detection[1]['Class_ID'] in [3,4,5,6]:
                         center_y = (int(y1) + int(y2))/2
+                    else:
+                        center_y = sorted((int(y1),int(y2)))
+
                     trk_id = int(detection[1]['Tracker_ID'])
-                    cx1 = int(float(detection[1]['Arrow_points'][0]))
-                    cy1 = int(float(detection[1]['Arrow_points'][1]))
                     self.angleDict[trk_id].append((int(center_x),int(center_y)))
+                    detection_array.append(index)
+                    detection_array.append(int(x1))
+                    detection_array.append(int(y1))
+                    detection_array.append(int(x2))
+                    detection_array.append(int(y2))
+                    if not pd.isna(detection[1]['Conf_Score']):
+                        detection_array.append(detection[1]['Conf_Score']/100)    
+                    else:
+                        detection_array.append(-1)
+                    detection_array.append(detection[1]['Class_ID'])
+                    detection_array.extend([0, 0, 0]) # Placeholder values. The visualizer function doesn't need these but kept in places to align with the indices.
+                    detection_array.append(detection[1]['Tracker_ID'])
+                    detection_array.append(detection[1]['Speed'])
+                    detection_array.append(detection[1]['Arrow_points'][0])
+                    detection_array.append(detection[1]['Arrow_points'][1])
+                    if len(self.angleDict[trk_id])>10:
+                        detection_array.append(self.angleDict)
+                        del self.angleDict[trk_id][0]
+                    outer_array.append(detection_array)
+                    
+            for detection in outer_array:
+                index = detection[0]
+                x1, y1, x2, y2 = detection[1:5]
+                x1 = int(x1)
+                y1 = int(y1)
+                x2 = int(x2)
+                y2 = int(y2)
+                tracker_id = int(detection[10])
+                speed = detection[11]
 
-                    new_row = {
-                                'Index': index,
-                                'Video_Internal_Timer': int(frame_time), 
-                                'Heading_angle': np.nan
-                                }
+                # variables for heading arrow
+                cx1, cy1 = int(detection[-3]), int(detection[-2])   # previous frame points
+                track_pts = detection[-1]
+                if type(track_pts)==defaultdict:
+                    for pt in track_pts[tracker_id]:
+                        predicted = self.kf.predict(pt[0], pt[1])
+                    pred = self.kf.predict(predicted[0], predicted[1])
+                    pred2 = self.kf.predict(pred[0], pred[1])
+                    points = [[cx1, cy1], [int(pred2[0]), int(pred2[1])], [1920, cy1]]
 
-                    points_ = [[cx1, cy1], [int(center_x), int(center_y)], [x2, cy1]]
-                    if len(self.angleDict[trk_id])<=10:
-                        if detection[1]['Speed']!= 0:
-                            angle_ = self.angle.findangle(points=points_)
+                    if speed>3:
+                        angle = self.angle.findangle(points=points)
 
-                            new_row = {
-                                'Index': index,
-                                'Video_Internal_Timer': int(frame_time), 
-                                'Heading_angle': angle_
-                                } 
+                        new_row = {
+                            'Index': index,
+                            'Video_Internal_Timer': int(frame_time), 
+                            'Heading_angle': angle
+                            }
+                        outer_array_2.append(new_row)
 
-                    elif len(self.angleDict[trk_id])>10:
-                        for pt in self.angleDict[trk_id]:
-                            predicted = self.kf.predict(pt[0], pt[1])
-                        del self.angleDict[trk_id][-1]
-
-                        pred = predicted
-                        for i in range(2):
-                            pred = self.kf.predict(pred[0], pred[1])
-
-                        points = [[cx1, cy1], [int(pred[0]), int(pred[1])], [x2, cy1]]
-                        if detection[1]['Speed']!= 0:
-                            angle = self.angle.findangle(points=points)
-
-                            new_row = {
-                                'Index': index,
-                                'Video_Internal_Timer': int(frame_time), 
-                                'Heading_angle': angle
-                                } 
-
-                    outer_array.append(new_row)
-
-        df_angle = pd.DataFrame(outer_array)
+        df_angle = pd.DataFrame(outer_array_2)
+        df_angle.to_csv('try_direct.csv')
 
         # Copy Angle values to the original dataframe by matching index values
         for i in df_angle['Index']:
@@ -305,8 +320,8 @@ class PostProcess():
                 f.write("file {} \n".format(t))
 
         # use ffmpeg to combine the video output files
-        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec nvenc_hevc " + str(self.outputfile_name)
-        #ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
+        # ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec nvenc_hevc " + str(self.outputfile_name)
+        ffmpeg_cmd = "ffmpeg -y -loglevel error -f concat -safe 0 -i list_of_output_files.txt -vcodec copy " + str(self.outputfile_name)
         sp.Popen(ffmpeg_cmd, shell=True).wait()
 
         # Remove the temperory output files
@@ -584,11 +599,17 @@ class PostProcess():
 
                 for vid_timer, x1, y1, x2, y2, class_id in bbox_positions: 
                     center_x = (x1 + x2)/2
-                    if class_id in (0,1,2): 
+
+                    if str(class_id)!='nan':
+                        if class_id in (0,1,2): 
+                            _, max_y = sorted((y1, y2))
+                        elif class_id in (3,4,5,6):
+                            max_y = (y1 + y2)/2
+                    else:
                         _, max_y = sorted((y1, y2))
-                    elif class_id in (3,4,5,6):
-                        max_y = (y1 + y2)/2
+                    
                     base_coordinate = camera_calib.projection_pixel_to_world((center_x, max_y)) # Calculating the center of point of the bottom edge of BBOX and calculating it's world coordinates with homography
+                    base_coordinate = (base_coordinate[0],base_coordinate[1])
                     current_point = (center_x, max_y)
 
                     if prev_point == -1:
@@ -601,7 +622,7 @@ class PostProcess():
                         previous_point = previous_point
 
                         if speed_kmH < 1:
-                            speed_kmH = 0 # To prevent small movements in the BBOX_Positions when the VRU's are standing 
+                            speed_kmH =  0 # To prevent small movements in the BBOX_Positions when the VRU's are standing
 
                         new_row_withSpeed = {
                             'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH, 'Arrow_points': [previous_point[0], previous_point[1]]
@@ -736,6 +757,94 @@ class PostProcess():
             df_speed.loc[i, :] = df_speed_dup.loc[i, :]
         
         return df_speed
+
+    def Save_VRU_count(self, df, path):
+        df = df.copy()
+        df_group = df.groupby(by=['Class_ID'])
+        unique_class = df['Class_ID'].unique()
+        d = defaultdict(list)
+        VRU_count = {}
+        VRU_direction = defaultdict(list)
+
+        for cls in unique_class:
+            if str(cls)!="nan":
+                g = df_group.get_group(cls)
+                for i in g['Tracker_ID'].unique():
+                    d[cls].append(i)
+                VRU_count[int(cls)] = len(d[cls])
+
+                unique_trk = g.Tracker_ID.unique()
+                tracker_group = g.groupby('Tracker_ID')
+                for trk_id in unique_trk:
+                    p = g.loc[g['Tracker_ID']==trk_id,['Heading_angle']]
+                    p = p.reset_index(drop=True)
+                    for j in range(len(p['Heading_angle'])):
+                        if str(p['Heading_angle'][j]) != "nan":
+                            angle = p['Heading_angle'][j]
+                            if angle>10 and angle<=80:
+                                direction = "NE"
+                            elif angle>80 and angle<=100:
+                                direction = "N"
+                            elif angle>100 and angle<=170:
+                                direction = "NW"
+                            elif angle>170 and angle<=190:
+                                direction = "W"
+                            elif angle>190 and angle<=260:
+                                direction = "SW"
+                            elif angle>260 and angle<=280:
+                                direction = "S"
+                            elif angle>280 and angle<=350:
+                                direction = "SE"
+                            elif angle>350 and angle<=360:
+                                direction = "E"
+                            elif angle>=0 and angle<=10:
+                                direction = "E"
+                            VRU_direction[(cls,trk_id)].append(direction)
+        with open(fr"{path}\VRU_count.txt", "w") as f:
+            for k, v in VRU_count.items():
+                if k == 0:
+                    f.writelines(f"Escooter: {v}\n")
+                elif k == 1:
+                    f.writelines(f"Pedestrians: {v}\n")
+                elif k == 2:
+                    f.writelines(f"Cyclists: {v}\n")
+                elif k == 3:
+                    f.writelines(f"Motorcycle: {v}\n")
+                elif k == 4:
+                    f.writelines(f"Car: {v}\n")
+                elif k == 5:
+                    f.writelines(f"Truck: {v}\n")
+                elif k == 6:
+                    f.writelines(f"Bus: {v}\n")
+
+            f.writelines("\n")
+
+            for k,v in VRU_direction.items():
+                seen = set()
+                if k[0] == 0:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Escooter_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+                elif k[0] == 1:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Pedestrian_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+                elif k[0] == 2:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Cyclist_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+                elif k[0] == 3:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Motorcycle_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+                elif k[0] == 4:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Car_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+                elif k[0] == 5:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Truck_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+                elif k[0] == 6:
+                    l = [x for x in v if not (x in seen or seen.add(x))]
+                    f.writelines(f"Bus_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
+            
+            f.close()
+
         
     def run(self): # Main function of the class which runs all the post-processing and saves the video
         df_duplicate = self.detections_dataframe.copy()
@@ -761,6 +870,8 @@ class PostProcess():
         df_latest.to_csv(f'{self.output_directory}/{self.file_name}_latest.csv')
         print('-> Finished Saving Heading_angle')
         print('\nNow, saving the video ...')
+
+        self.Save_VRU_count(df_latest, self.output_directory)
 
         # Save video
         self.groupedByFrametime = self.group_by_internalTimer(self.final_df)
