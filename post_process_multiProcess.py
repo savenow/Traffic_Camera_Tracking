@@ -230,6 +230,9 @@ class PostProcess():
         self.video_writer.release()        
 
     def Save_angle_to_csv(self, df_with_index, final_df):
+        """
+        gives an angle of movement for each moving object. (between 0° and 360°)
+        """
         last_df = final_df.copy()
         outer_array_2 = []
         for data in df_with_index:
@@ -759,6 +762,28 @@ class PostProcess():
         return df_speed
 
     def Save_VRU_count(self, df, path):
+        """
+        gives:
+        1. the counts for each class (e.g. no. of pedestrians, no. of cycliste, etc.)
+        2. the direction sequence for each unique class object.
+            - Angle in 10° to 80° (NE), Angle in 80° to 100° (N), Angle in 100° to 170° (NW),
+              Angle in 170° to 190° (W), Angle in 190° to 260° (SW), Angle in 260° to 280° (S),
+              Angle in 280° to 350° (SE), Angle in 350° to 360° (E), Angle in 0° to 10° (E)
+
+                      (90°)
+                        N
+                        |
+                (NW)    |   (NE)
+                        |
+     (180°) W <-------------------> E (0° or 360°)
+                        |
+                (SW)    |   (SE)
+                        |
+                        S
+                      (270°)
+
+
+        """
         df = df.copy()
         df_group = df.groupby(by=['Class_ID'])
         unique_class = df['Class_ID'].unique()
