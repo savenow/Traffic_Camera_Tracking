@@ -118,12 +118,12 @@ def combine_trackers(orig_dataframe, first_tracker_group, second_tracker_group):
     df_new_tracker = pd.DataFrame(new_tracker_combined_dict)
     df_new_tracker = df_new_tracker.assign(Tracker_ID=first_tracker_id)
     df_new_tracker = df_new_tracker.sort_values(by=['Video_Internal_Timer']).reset_index(drop=True)
-    try:
-        # Using Spline Interpolation by default.
-        bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y', 'BBOX_x_foot', 'Minimap_x', 'Minimap_y']].interpolate(method='spline', order=4, axis=0)
-    except ValueError:
-        # If spline interpolation fails, falls back to simple linear interpolation
-        bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y', 'BBOX_x_foot', 'Minimap_x', 'Minimap_y']].interpolate(method='linear', axis=0)   
+    # try:
+    #     # Using Spline Interpolation by default.
+    #     bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y', 'BBOX_x_foot', 'Minimap_x', 'Minimap_y']].interpolate(method='spline', order=4, axis=0)
+    # except ValueError:
+    #     # If spline interpolation fails, falls back to simple linear interpolation
+    bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y', 'BBOX_x_foot', 'Minimap_x', 'Minimap_y']].interpolate(method='linear', axis=0)   
     df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y', 'BBOX_x_foot', 'Minimap_x', 'Minimap_y']] = bbox_position.rolling(window=15, min_periods=1).mean()
     
 #     fig, ax = plt.subplots(nrows=1, ncols=3)
