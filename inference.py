@@ -29,7 +29,7 @@ from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
 
 # from extract_stored_detections_copy import PostProcess
-from post_process_multiProcess import PostProcess
+from post_process_multiProcess_new import PostProcess
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]

@@ -19,6 +19,7 @@ from imutils.video import FPS
 from collections import namedtuple, defaultdict
 from heading_angle import Angle
 from kalmanfilter import KalmanFilter
+from tracker_fusion import tracker_fusion
 import subprocess as sp
 import multiprocessing as mp
 from os import remove
@@ -50,7 +51,7 @@ class PostProcess():
         self.input_video = input_video
         self.outputfile_name = self.output_directory / __output_video_original_path.name
         self.video_fps = 30
-        self.num_processes = int(mp.cpu_count())# * 0.4)
+        self.num_processes = int(mp.cpu_count() * 0.4)
         self.trajectory_retain_duration = 250
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         self.trackDict = defaultdict(list)
@@ -484,10 +485,10 @@ class PostProcess():
         final_dataframe, id_latest = self.get_arranged_IDs(new_dataframe, ids_after_set_nan)
         return final_dataframe
 
-    def interpolate_data(self, dataframe):
+    def interpolate_and_preprocess_data(self, dataframe):
         """
         During the entire duration of each tracker_id, there could be frames inbetween where they are not present. In this function, we are grouping the .csv by Tracker_ID and interpolating the missing values
-        for the BBOX Coordinates. Date/Time for each missing row is copied from the originial Dataframe and the Class_ID / Conf_Thres are just left empty. Quadratic Interpolation is used by default and if the tracker has only two rows of BBOX
+        for the BBOX Coordinates. Date/Time for each missing row is copied from the originial Dataframe and the Class_ID / Conf_Thres are just left empty. Spline Interpolation(order=4) is used by default and if the tracker has only two rows of BBOX
         Coordinates available, then Linear Interpolation is used. Also the rows where no tracker is present are also accordingly handled.
 
         Args:
@@ -495,6 +496,13 @@ class PostProcess():
         Returns:
             interpolated_final_df (pd.Dataframe): Dataframe object with all the missing tracker coordinates interpolated
         """
+        def _imgToMinimap_dataframe(x, minimap_class):
+            if not pd.isna(x['BBOX_x_foot']) or not pd.isna(x['BBOX_BottomRight_y']):
+                minimap_point = minimap_class.projection_image_to_map(x['BBOX_x_foot'], x['BBOX_BottomRight_y'])
+            else:
+                minimap_point = (None, None)
+            return minimap_point[0], minimap_point[1]
+
         unique_trackers = dataframe.Tracker_ID.unique()
         tracker_group = dataframe.groupby('Tracker_ID')
 
@@ -556,7 +564,7 @@ class PostProcess():
                 df_new_tracker = df_new_tracker.sort_values(by=['Video_Internal_Timer']).reset_index(drop=True)
                 try:
                     # Using Quadratic Interpolation by default. Works only if more than two BBOX coordinates are associated with the tracker
-                    bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y']].interpolate(method='quadratic', axis=0)
+                    bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y']].interpolate(method='spline', order=4, axis=0)
                 except ValueError:
                     # If just two points are present, then using linear interpolation
                     bbox_position = df_new_tracker[['BBOX_TopLeft_x', 'BBOX_TopLeft_y', 'BBOX_BottomRight_x', 'BBOX_BottomRight_y']].interpolate(method='linear', axis=0)   
@@ -566,6 +574,10 @@ class PostProcess():
         interpolated_df = pd.concat(interpolated_df_final_list, ignore_index=True)
         missing_vidTimer_df = self.find_missing_vidTimer(dataframe, vidTimer_present_in_interpolated_df)
         interpolated_final_df = pd.concat([interpolated_df, missing_vidTimer_df], ignore_index=True).sort_values(by=['Video_Internal_Timer']).reset_index(drop=True)
+        interpolated_final_df['BBOX_x_foot'] = (interpolated_final_df['BBOX_TopLeft_x'] + interpolated_final_df['BBOX_BottomRight_x']) / 2
+        minimap_obj = Minimap()
+        interpolated_final_df[['Minimap_x', 'Minimap_y']] = interpolated_final_df.apply(_imgToMinimap_dataframe, args=(minimap_obj, ), axis=1, result_type='expand')
+        
         return interpolated_final_df
 
     def velocity_estimation(self, interpolated_df, rolling_window_size=15, video_fps=30):
@@ -873,14 +885,19 @@ class PostProcess():
         
     def run(self): # Main function of the class which runs all the post-processing and saves the video
         df_duplicate = self.detections_dataframe.copy()
-        removed_df = self.remove_tracker(df_duplicate)
-        print('\n-> Finished cleaning trackers')
-        removed_df.to_csv(f'{self.output_directory}/{self.file_name}_cleaned.csv')
-
-        interpolated_df = self.interpolate_data(removed_df)
+        # removed_df = self.remove_tracker(df_duplicate)
+        # print('\n-> Finished cleaning trackers')
+        # removed_df.to_csv(f'{self.output_directory}/{self.file_name}_cleaned.csv')
+        df_duplicate.Time = pd.to_datetime(df_duplicate['Date']+df_duplicate['Time']+ ' ' + df_duplicate['Millisec'].astype('str'), format='%d.%m.%Y%H:%M:%S %f')
+        
+        interpolated_df = self.interpolate_and_preprocess_data(df_duplicate)
         interpolated_df.to_csv(f'{self.output_directory}/{self.file_name}_interpolated.csv')
         print('-> Finished interpolating missing tracker coordinates')
-
+        
+        tracker_fused = tracker_fusion(interpolated_df)
+        interpolated_df.to_csv(f'{self.output_directory}/{self.file_name}_tracker_fused.csv')
+        print('-> Finished tracker fusion')
+        
         speed_df = self.velocity_estimation(interpolated_df)
         speed_df.to_csv(f'{self.output_directory}/{self.file_name}_speed.csv')
         print('-> Finished calculating the velocities')
