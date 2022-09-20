@@ -894,12 +894,13 @@ class PostProcess():
         interpolated_df.to_csv(f'{self.output_directory}/{self.file_name}_interpolated.csv')
         print('-> Finished interpolating missing tracker coordinates')
         
-        tracker_fused, (total_num_trackers, num_disjoint_trackers, num_prev_disjoint_perfected, num_perfect_trackers) = tracker_fusion(interpolated_df)
-        print(f'[DEBUG] Total number of trackers: {total_num_trackers}'),
-        print(f'[DEBUG] Number of final dijoint trackers: {num_disjoint_trackers}'),
-        print(f'[DEBUG] Number of previously-disjoint trackers perfected: {num_prev_disjoint_perfected}'),
-        print(f'[DEBUG] Number of final perfect trackers: {num_perfect_trackers}'),
-        
+        tracker_fused, (total_num_trackers, num_disjoint_trackers, num_prev_disjoint_perfected, num_perfect_trackers, num_removed_trackers) = tracker_fusion(interpolated_df)
+        print(f'[DEBUG] Total number of trackers: {total_num_trackers}')
+        print(f'[DEBUG] Number of final dijoint trackers: {num_disjoint_trackers}')
+        print(f'[DEBUG] Number of previously-disjoint trackers perfected: {num_prev_disjoint_perfected}')
+        print(f'[DEBUG] Number of final perfect trackers: {num_perfect_trackers}')
+        print(f'[DEBUG] Number of removed trackers: {num_removed_trackers}')
+
         tracker_fused.to_csv(f'{self.output_directory}/{self.file_name}_tracker_fused.csv')
         print('-> Finished tracker fusion')
         

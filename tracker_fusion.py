@@ -140,7 +140,7 @@ def combine_trackers(orig_dataframe, first_tracker_group, second_tracker_group):
    
     return df_new_tracker
 
-def tracker_fusion(main_df, tracker_search_time_threshold = 30):
+def tracker_fusion(main_df, tracker_search_time_threshold = 10):
     """Combines all disjoint tracker of single VRU into one tracker using spatial search regions. Only for VRU's (Class_ID < 3).
 
     Args:
@@ -150,32 +150,45 @@ def tracker_fusion(main_df, tracker_search_time_threshold = 30):
         df_final_fused (pd.df): Tracker fused dataframe
         (total_num_trackers, num_disjoint_trackers, num_prev_disjoint_perfected, num_perfect_trackers): Some statistics for debugging
     """
+    MIN_TRACKER_TIME_INSTANCES = 10
     tracker_group = main_df.groupby('Tracker_ID')
     unique_trackers = main_df['Tracker_ID'].unique()
 
     counter = 0
 
-    tracker_list = [tracker_group.get_group(unique_tracker_id).reset_index(drop=True).dropna() for unique_tracker_id in unique_trackers if not pd.isna(unique_tracker_id)]
-    tracker_list = [trk_group for trk_group in tracker_list if not trk_group.empty]
+    before_cleaning_tracker_list = [tracker_group.get_group(unique_tracker_id).reset_index(drop=True).dropna() for unique_tracker_id in unique_trackers if not pd.isna(unique_tracker_id)]
+    before_cleaning_tracker_list = [trk_group for trk_group in before_cleaning_tracker_list if not trk_group.empty]
+    after_cleaning_tracker_list = []
     tracker_finished_list = []
 
     num_perfect_trackers = 0
     num_disjoint_trackers = 0
     num_prev_disjoint_perfected = 0
-    total_num_trackers = len(tracker_list)
+    num_removed_trackers = 0
 
-    while len(tracker_list) > 0:  
+    # Removing tracker with just small number of instances
+    for trk in before_cleaning_tracker_list:
+        if trk.shape[0] >= MIN_TRACKER_TIME_INSTANCES: 
+            after_cleaning_tracker_list.append(trk)
+        else:    
+            num_removed_trackers += 1
+
+    total_num_trackers = len(after_cleaning_tracker_list)
+
+    while len(after_cleaning_tracker_list) > 0:  
         counter += 1
-        main_tracker_group = tracker_list[0]
+        main_tracker_group = after_cleaning_tracker_list[0]
+          
         main_tracker_final_time = main_tracker_group.iloc[-1]['Time']
         main_tracker_classID = main_tracker_group['Class_ID'].mode()[0]
         is_disjoint = detect_tracker_disjoint(main_tracker_group)
-        
+
         if is_disjoint and main_tracker_classID < 3: # Only for VRU's. Vehicles have class_id > 3
             search_region = create_tracker_search_regions(main_tracker_group)
             store_neighborhood_trackers = []
-            for loop_tracker_index in range(1, len(tracker_list)): # Looping through all following tracker
-                loop_tracker_group = tracker_list[loop_tracker_index] 
+            for loop_tracker_index in range(1, len(after_cleaning_tracker_list)): # Looping through all following tracker
+                loop_tracker_group = after_cleaning_tracker_list[loop_tracker_index] 
+
                 loop_tracker_initial_time = loop_tracker_group.iloc[0]['Time']
                 _time_delta = (loop_tracker_initial_time - main_tracker_final_time).seconds
 
@@ -191,23 +204,23 @@ def tracker_fusion(main_df, tracker_search_time_threshold = 30):
                 store_neighborhood_trackers = np.sort(store_neighborhood_trackers, axis=0) # Getting the closest neighbor based on time
 
                 closest_neighbor_tracker_index = store_neighborhood_trackers[0, 0]
-                closed_neighbor_tracker_group = tracker_list[closest_neighbor_tracker_index]
+                closed_neighbor_tracker_group = after_cleaning_tracker_list[closest_neighbor_tracker_index]
                 new_tracker = combine_trackers(main_df, main_tracker_group, closed_neighbor_tracker_group) # Combines the main_tracker and closest_neighbor
 
                 # Deleting the associated tracker and inserting the new combine one
                 num_prev_disjoint_perfected += 1
-                tracker_list.pop(closest_neighbor_tracker_index)
-                tracker_list.pop(0)
-                tracker_list.insert(0, new_tracker)
+                after_cleaning_tracker_list.pop(closest_neighbor_tracker_index)
+                after_cleaning_tracker_list.pop(0)
+                after_cleaning_tracker_list.insert(0, new_tracker)
 
             else:
                 # If no neighboring trackers found, add to the finished the list
-                tracker_list.pop(0)
+                after_cleaning_tracker_list.pop(0)
                 num_disjoint_trackers += 1
                 tracker_finished_list.append(main_tracker_group)
         else:
             # If the tracker is perfect or Class_ID > 3 (vehicles), add directly to the finished list
-            tracker_list.pop(0)
+            after_cleaning_tracker_list.pop(0)
             num_perfect_trackers += 1
             tracker_finished_list.append(main_tracker_group)
 
@@ -224,4 +237,4 @@ def tracker_fusion(main_df, tracker_search_time_threshold = 30):
     df_final_fused = pd.concat(tracker_final_list, ignore_index=True)
     df_final_fused = df_final_fused.sort_values(by=['Video_Internal_Timer']).reset_index(drop=True)
     
-    return df_final_fused, (total_num_trackers, num_disjoint_trackers, num_prev_disjoint_perfected, num_perfect_trackers)
+    return df_final_fused, (total_num_trackers, num_disjoint_trackers, num_prev_disjoint_perfected, num_perfect_trackers, num_removed_trackers)
