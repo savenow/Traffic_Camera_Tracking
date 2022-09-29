@@ -13,6 +13,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from copy import deepcopy
 import time
+import yaml
 import shutil
 
 import sys
@@ -29,7 +30,7 @@ from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
 
 # from extract_stored_detections_copy import PostProcess
-from post_process_multiProcess_new import PostProcess
+from post_process_multiProcess import PostProcess
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -41,13 +42,21 @@ class Inference():
     def __init__(self, input, model_weights, output, minimap, 
                 trj_mode, disable_post_process, save_infer_video, 
                 imgSize, update_rate, save_class_frames):        
+        # Main config
+        main_config_path = 'configs/main_param.yaml'
+        with open(main_config_path) as file_stream:
+            try:
+                self.main_config_dict = yaml.safe_load(file_stream)
+            except yaml.YAMLError as exc:
+                print(f'[Error] Failed to load main .yaml file. {exc}\n Quitting')
+        
         # Inference Params
-        self.target_resolution = [1080, 1920]
-        self.img_size = imgSize
-        self.conf_thres = 0.35
-        self.iou_thres = 0.45
+        self.target_resolution = self.main_config_dict['target_resolution']
+        self.img_size = self.main_config_dict['img_size']
+        self.conf_thres = self.main_config_dict['conf_thres']
+        self.iou_thres = self.main_config_dict['iou_thres']
         self.agnostic_nms = False
-        self.max_det = 1000
+        self.max_det = self.main_config_dict['max_det']
         self.classes = None # Filter classes
 
         self.device = torch.device('cuda:0')
@@ -57,7 +66,7 @@ class Inference():
         self.update_rate = update_rate
         self.save_infer_video = save_infer_video
         self.showTrajectory = trj_mode
-        self.trajectory_retain_duration = 250 # Number of frames the trajectory for each tracker id must be retained before removal
+        self.trajectory_retain_duration = self.main_config_dict['trajectory_retain_duration'] # Number of frames the trajectory for each tracker id must be retained before removal
         self.save_class_frames = save_class_frames
 
         # Checking input
@@ -69,7 +78,7 @@ class Inference():
             elif input[-4:] in ['.mp4', '.mkv', '.avi']:
                 self.input = input
                 self.inference_mode = 'Video'
-                self.fps = 30
+                self.fps = self.main_config_dict['fps']
             else:
                 print("Invalid input file. The file should be an image or a video !!")
                 exit(-1)
@@ -119,7 +128,7 @@ class Inference():
         self.model = model
 
         # Initialize Tracker
-        self.Objtracker = Sort(max_age=40, min_hits=7, iou_threshold=0.3)
+        self.Objtracker = Sort(max_age=self.main_config_dict['max_age'], min_hits=self.main_config_dict['min_hits'], iou_threshold=self.main_config_dict['iou_threshold'])
         self.Objtracker.reset_count()
 
         # Camera Calibration data: Used for velocity estimation
@@ -233,27 +242,35 @@ class Inference():
             framecount += 1
             if framecount < -1:
                 continue
-            elif framecount > 72000:
+            elif framecount > 108000:
+                print('[Warning] Video sequence exceeds one hour. Stopping inference due to possible ram issues')
                 break
+
             storing_output = {}
             storing_output["Video_Internal_Timer"]= videoTimer
+            
             # OCR Reading Timestamp
-            if ocr.need_pyt or framecount == 1:
-                time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+4:ocr_vertical_offset+41, 0:568], videoTimer))
-            else:
-                time_ocr_frame  = ocr.run_ocr(videoTimer)
+            if self.main_config_dict['is_ocr_enabled']:
+                if ocr.need_pyt or framecount == 1:
+                    time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+self.main_config_dict['ocr_y_min']:ocr_vertical_offset+self.main_config_dict['ocr_y_max'], self.main_config_dict['ocr_x_min']:self.main_config_dict['ocr_x_max']], videoTimer))
+                else:
+                    time_ocr_frame  = ocr.run_ocr(videoTimer)
 
-            if isinstance(time_ocr_frame, datetime):
-                date = time_ocr_frame.strftime("%d.%m.%Y")
-                time = time_ocr_frame.strftime("%H:%M:%S")
-                millisec = int(time_ocr_frame.microsecond / 1000)
-                storing_output["Date"] = date
-                storing_output["Time"] = time
-                storing_output["Millisec"] = millisec
+                if isinstance(time_ocr_frame, datetime):
+                    date = time_ocr_frame.strftime("%d.%m.%Y")
+                    time = time_ocr_frame.strftime("%H:%M:%S")
+                    millisec = int(time_ocr_frame.microsecond / 1000)
+                    storing_output["Date"] = date
+                    storing_output["Time"] = time
+                    storing_output["Millisec"] = millisec
+                else:
+                    storing_output["Date"] = np.nan
+                    storing_output["Time"] = np.nan
+                    storing_output["Millisec"] = np.nan
             else:
-                storing_output["Date"] = np.nan
-                storing_output["Time"] = np.nan
-                storing_output["Millisec"] = np.nan
+                    storing_output["Date"] = np.nan
+                    storing_output["Time"] = np.nan
+                    storing_output["Millisec"] = np.nan
 
             # Image Preprocessing for inference
             t1 = time_sync()

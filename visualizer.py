@@ -95,7 +95,6 @@ class Visualizer():
         self.angle = Angle()
 
         if minimap:
-            print(f"[INFO] Minimap is set to {minimap}")
             self.showMinimap = True
             self.Minimap_obj = Minimap(trajectory_update_rate=trajectory_update_rate, trajectory_retain_duration=trajectory_retain_duration)
             self.showTrajectory = trajectory_mode

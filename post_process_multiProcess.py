@@ -50,7 +50,7 @@ class PostProcess():
         self.input_video = input_video
         self.outputfile_name = self.output_directory / __output_video_original_path.name
         self.video_fps = 30
-        self.num_processes = int(mp.cpu_count())# * 0.4)
+        self.num_processes = int(mp.cpu_count() * 0.4)
         self.trajectory_retain_duration = 250
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         self.trackDict = defaultdict(list)

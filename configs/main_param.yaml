@@ -1,0 +1,45 @@
+## Traffic_Camera_Tracking main parameter config file
+img_size: [1088, 1920] # 1088 because it has to be a multiple of 32
+target_resolution: [1080, 1920]
+fps: 30
+
+# YoloV5 Params
+conf_thres: 0.35
+iou_thres: 0.5
+max_det: 1000
+
+trajectory_retain_duration: 250
+
+# SORT tracker params
+max_age: 50
+min_hits: 5
+iou_threshold: 0.3
+
+# OCR-time detection box params
+is_ocr_enabled: true ## Flag not tested. Change with caution !! 
+ocr_y_min: 4
+ocr_y_max: 41
+ocr_x_min: 0
+ocr_x_max: 568
+
+## Post-processing
+percentage_cpu_processes: 0.4 # Percentage of cpu cores to use. Using all of them leads to massive RAM usage and causing crashes
+min_trackerID_instances_remove_threshold: 80
+velocity_estimation_rolling_window_size: 15
+
+class_id_matching_std_dev_threshold: 0.35
+top_left_ignorance_regions:
+  - [495, 118]
+  - [590, 173]
+  - [625, 221]
+  - [673, 225]
+  - [641, 162]
+  - [680, 145]
+  - [588, 92]
+right_ignorance_regions:
+  - [1373, 402]
+  - [1379, 461]
+  - [1497, 471]
+  - [1489, 411]
+cyclists_speed_threshold: 23
+mean_speed_thresold: 9
