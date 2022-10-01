@@ -7,8 +7,6 @@ This project is a part of **SaveNoW**, where all these data are used to create a
 
 <img src="/readme_photos/Overview.png" width="800"> 
 
-*For further updates on the project, follow this notion page: https://www.notion.so/Project-Traffic-Camera-tracking-15a9bb984c1341369ad40562610dc83f*
-
 
 ## Individual Components
 ----
