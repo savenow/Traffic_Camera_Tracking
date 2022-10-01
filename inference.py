@@ -49,7 +49,8 @@ class Inference():
                 self.main_config_dict = yaml.safe_load(file_stream)
             except yaml.YAMLError as exc:
                 print(f'[Error] Failed to load main .yaml file. {exc}\n Quitting')
-        
+                exit()
+
         # Inference Params
         self.target_resolution = self.main_config_dict['target_resolution']
         self.img_size = self.main_config_dict['img_size']

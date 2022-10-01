@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
-from imutils.video import FPS
+
 from collections import namedtuple, defaultdict
 from heading_angle import Angle
 from kalmanfilter import KalmanFilter
@@ -24,6 +24,7 @@ import multiprocessing as mp
 from os import remove
 import time
 import shutil
+import yaml
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]
@@ -33,6 +34,15 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 class PostProcess():
     def __init__(self, data_file, input_video, output_video, enable_minimap, enable_trj_mode, trajectory_update_rate, save_class_frames):
+        # Main config
+        main_config_path = 'configs/main_param.yaml'
+        with open(main_config_path) as file_stream:
+            try:
+                self.main_config_dict = yaml.safe_load(file_stream)
+            except yaml.YAMLError as exc:
+                print(f'[Error] Failed to load main .yaml file. {exc}\n Quitting')
+                exit()
+        
         self.detections_dataframe = pd.read_csv(data_file, index_col=[0])
         __output_video_original_path = Path(output_video)
         self.file_name = __output_video_original_path.stem
@@ -49,9 +59,9 @@ class PostProcess():
         self.detections_dataframe = self.removeErrorTimers(self.detections_dataframe)
         self.input_video = input_video
         self.outputfile_name = self.output_directory / __output_video_original_path.name
-        self.video_fps = 30
-        self.num_processes = int(mp.cpu_count() * 0.4)
-        self.trajectory_retain_duration = 250
+        self.video_fps = self.main_config_dict['fps']
+        self.num_processes = int(mp.cpu_count() * self.main_config_dict['percentage_cpu_processes'])
+        self.trajectory_retain_duration = self.main_config_dict['trajectory_retain_duration']
         self.Visualize = Visualizer(enable_minimap, enable_trj_mode, trajectory_update_rate, self.trajectory_retain_duration, save_class_frames)
         self.trackDict = defaultdict(list)
         self.angleDict = defaultdict(list)
@@ -477,7 +487,7 @@ class PostProcess():
         tracker_ids = self.get_tracker_IDs(dataframe)
         dataframe, arranged_ids = self.get_arranged_IDs(dataframe, tracker_ids)
         id_counts = self.get_tracker_Id_counts(dataframe, tracker_ids, arranged_ids)
-        id_to_delete = self.get_ids_to_delete(id_counts, 80)
+        id_to_delete = self.get_ids_to_delete(id_counts, self.main_config_dict['min_trackerID_instances_remove_threshold'])
         list_to_delete = self.get_index_to_delete(dataframe, id_to_delete)
         new_dataframe = self.set_index_nan(dataframe, list_to_delete)
         ids_after_set_nan = self.get_tracker_IDs(new_dataframe)
@@ -568,19 +578,19 @@ class PostProcess():
         interpolated_final_df = pd.concat([interpolated_df, missing_vidTimer_df], ignore_index=True).sort_values(by=['Video_Internal_Timer']).reset_index(drop=True)
         return interpolated_final_df
 
-    def velocity_estimation(self, interpolated_df, rolling_window_size=15, video_fps=30):
+    def velocity_estimation(self, interpolated_df, video_fps=30):
         """Groups the entire .csv by tracker_id and rolling average on each of the BBOX Coordinates to remove noise from detections. 
         Then calculating the center point of the base of each bbox and finding their correspoding world coordinates using homography matrix
         Calculating the distance between points in consecutive frames and converting them into km/h.
 
         Args:
             interpolated_df (pd.Dataframe): Dataframe after interpolation
-            rolling_window_size (int, optional): Samples to consider for rolling average. Defaults to 15.
             video_fps (int, optional): Data sample rate of the dataframe. Defaults to 30.
 
         Returns:
             df_interpolated_dup (pd.Dataframe): Dataframe containing the speed of each tracker in a separate column 'Speed'
         """
+        rolling_window_size = self.main_config_dict['velocity_estimation_rolling_window_size']
         camera_calib = Calibration()
         df_interpolated_dup = interpolated_df.copy()
         unique_trackers = df_interpolated_dup.Tracker_ID.unique()
@@ -711,7 +721,7 @@ class PostProcess():
             std_class_ID = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].std() 
             freq_occuring_class_id = df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].mode()[0]
 
-            if std_class_ID < 0.35:
+            if std_class_ID < self.main_config_dict['class_id_matching_std_dev_threshold']:
                 # Allocating the most frequently occurring class_id
                 df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = freq_occuring_class_id
 
@@ -720,8 +730,8 @@ class PostProcess():
                 df_speed_second_dup.loc[((df_speed_second_dup['Tracker_ID'] == unique_tracker_id) & (df_speed_second_dup['Speed'] == 0)), ['Class_ID', 'Speed']] = np.nan
 
                 # Ignorance Regions - BBOX Coordinates within these regions are ignored
-                top_left_corner = np.array([[495,118], [590,173], [625,221], [673,225], [641,162], [680,145], [588,92]])
-                right_section = np.array([[1373,402], [1379,461], [1497,471], [1489,411]])
+                top_left_corner = np.array(self.main_config_dict['top_left_ignorance_regions']) #np.array([[495,118], [590,173], [625,221], [673,225], [641,162], [680,145], [588,92]])
+                right_section = np.array(self.main_config_dict['right_ignorance_regions'])
                 
                 for index, row in single_tracker_group.iterrows():
                     x1, y1, x2, y2 = row['BBOX_TopLeft_x'], row['BBOX_TopLeft_y'], row['BBOX_BottomRight_x'], row['BBOX_BottomRight_y']
@@ -740,10 +750,10 @@ class PostProcess():
                 corrected_speed_95percentile = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Speed'].quantile(0.95)
                 
                 if freq_occuring_class_id in [0, 1, 2]:
-                    if corrected_speed_95percentile >= 23:
+                    if corrected_speed_95percentile >= self.main_config_dict['cyclists_speed_threshold']:
                         df_speed_dup.loc[df_speed_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'] = 2
 
-                    elif corrected_speed_mean > 9:
+                    elif corrected_speed_mean > self.main_config_dict['pedestrian_speed_threshold']:
                         keys = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().keys().tolist()
                         counts = df_speed_second_dup.loc[df_speed_second_dup['Tracker_ID'] == unique_tracker_id, 'Class_ID'].value_counts().tolist()
                         for freq in zip(keys, counts):# Ignoring Class_ID = 1 (pedestrian) and assigning the first value (since the counts is already in descending order, the first elements are obviously the more frequently occurring ;)
