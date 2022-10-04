@@ -835,7 +835,7 @@ class PostProcess():
                             elif angle>=0 and angle<=10:
                                 direction = "E"
                             VRU_direction[(cls,trk_id)].append(direction)
-        with open(fr"{path}\VRU_count.txt", "w") as f:
+        with open(f"{path}/VRU_count.txt", "w") as f:
             for k, v in VRU_count.items():
                 if k == 0:
                     f.writelines(f"Escooter: {v}\n")
