@@ -252,18 +252,24 @@ class Inference():
             
             # OCR Reading Timestamp
             if self.main_config_dict['is_ocr_enabled']:
+                ocr_mode = 'withoutMilliSec' # TODO: Change the value to 'withMilliSec' or 'withoutMilliSec'
                 if ocr.need_pyt or framecount == 1:
-                    time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+self.main_config_dict['ocr_y_min']:ocr_vertical_offset+self.main_config_dict['ocr_y_max'], self.main_config_dict['ocr_x_min']:self.main_config_dict['ocr_x_max']], videoTimer))
+                    time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+self.main_config_dict['ocr_y_min']:ocr_vertical_offset+self.main_config_dict['ocr_y_max'], self.main_config_dict['ocr_x_min']:self.main_config_dict['ocr_x_max']], videoTimer), ocr_mode)
                 else:
-                    time_ocr_frame  = ocr.run_ocr(videoTimer)
+                    time_ocr_frame  = ocr.run_ocr(videoTimer, ocr_mode)
 
                 if isinstance(time_ocr_frame, datetime):
                     date = time_ocr_frame.strftime("%d.%m.%Y")
                     time = time_ocr_frame.strftime("%H:%M:%S")
-                    millisec = int(time_ocr_frame.microsecond / 1000)
                     storing_output["Date"] = date
                     storing_output["Time"] = time
-                    storing_output["Millisec"] = millisec
+                    
+                    if ocr_mode == 'withMilliSec':
+                        millisec = int(time_ocr_frame.microsecond / 1000)
+                        storing_output["Millisec"] = millisec
+                    else:
+                        storing_output["Millisec"] = np.nan
+                    
                 else:
                     storing_output["Date"] = np.nan
                     storing_output["Time"] = np.nan

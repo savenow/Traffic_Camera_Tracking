@@ -88,10 +88,73 @@ class OCR_TimeStamp:
                     print('[OCR] Error reading milliseconds')
         return None
 
-    def run_ocr(self, input):
+    def run_pytesseract_noMilliSec(self, cropped_img):
+        gray = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(gray, 220,255,0)
+
+        output = cv2.connectedComponentsWithStats(thresh, 4, cv2.CV_32S)
+        (numLabels, labels, stats, centroids) = output
+        mask = np.zeros(gray.shape, dtype="uint8")
+
+        # Filtering out noise and consecutively adding connected characters to the empty mask
+        for i in range(0, numLabels):
+            x = stats[i, cv2.CC_STAT_LEFT]
+            y = stats[i, cv2.CC_STAT_TOP]
+            w = stats[i, cv2.CC_STAT_WIDTH]
+            h = stats[i, cv2.CC_STAT_HEIGHT]
+            area = stats[i, cv2.CC_STAT_AREA]
+            # (cX, cY) = centroids[i]
+
+            keepWidth = w > 5 and w < 19
+            keepHeight = h > 10 and h < 27
+            keepArea = area > 30 and area < 200
+            keepY = y > 2  and y < 41
+
+            if all((keepWidth, keepHeight, keepArea, keepY)):
+                componentMask = (labels == i).astype("uint8") * 255
+                mask = cv2.bitwise_or(mask, componentMask)
+        
+        # Converting the image to text
+        text_ocr = pytesseract.image_to_string(
+            mask, lang='eng', 
+            config='--psm 6 --oem 1'#-c tessedit_char_whitelist=1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        )[:-2]
+
+        if not any(c for c in text_ocr if not c.isalnum() and not c.isspace()):
+            text_ocr = text_ocr.split(' ')
+            if len(text_ocr) == 7:
+                # Reorganzing Datetime-stamp for PyTesseract to ignore millisec and adding ':' like 'hrs:min:sec' (This : is present in video but are filtered out as noise)
+                time_hr_min_sec = ':'.join(text_ocr[3:6])               
+                text_ocr = text_ocr[0] + " " + text_ocr[1] + " " + text_ocr[2] + " " + time_hr_min_sec + " " + text_ocr[6]
+                
+                ocr_string = f'[OCR] Output from PyTesseract: {text_ocr}'
+                try:
+                    matches = datefinder.find_dates(text_ocr)
+                    num_matches = 0
+                    matched_timeDate = None
+
+                    for f in matches:
+                        matched_timeDate = f
+
+                    if matched_timeDate:
+                        print(ocr_string + f"Datetime extraction: {matched_timeDate}")
+                        self.need_pyt = False
+                        return matched_timeDate
+                    else:
+                        print(ocr_string + f"No detections")
+                    
+                except Exception as e:
+                    print(f'[OCR] Exception while reading DateTime: {e}')
+                          
+        return None
+
+    def run_ocr(self, input, mode='withMilliSec'):
         if self.framecount == 0: # For the first frame of the video, running PyTesseract
             (c_img, videotimer) = input
-            time_from_pytes = self.run_pytesseract(c_img)
+            if mode == 'withMilliSec':
+                time_from_pytes = self.run_pytesseract(c_img)
+            elif mode == 'withoutMilliSec':
+                time_from_pytes = self.run_pytesseract_noMilliSec(c_img)
             if not self.need_pyt:
                 self.timeOCR = time_from_pytes
                 self.framecount += 1
@@ -100,7 +163,10 @@ class OCR_TimeStamp:
 
         elif self.need_pyt: # Running this every self.check_every_frames and checking whether sync is retained
             (c_img, videotimer) = input
-            time_from_pytes = self.run_pytesseract(c_img)
+            if mode == 'withMilliSec':
+                time_from_pytes = self.run_pytesseract(c_img)
+            elif mode == 'withoutMilliSec':
+                time_from_pytes = self.run_pytesseract_noMilliSec(c_img)
             if isinstance(time_from_pytes, datetime):
                 time_from_pytes = time_from_pytes.replace(microsecond=0)
                 current_internal_time = self.timeOCR + timedelta(microseconds=(videotimer-self.prevTimer)*1000)
@@ -137,7 +203,7 @@ class OCR_TimeStamp:
 
 if __name__ == "__main__":
     ocr = OCR_TimeStamp()
-    video_path = '/media/mydisk/videos/samples/08-06-2021_18-00.mkv'
+    video_path = '/home/mobilitylabextreme002/Videos/fkk_new_videos/20220913_074500/20220913_074500_000.mp4'
     vid_cap = cv2.VideoCapture(video_path)
 
     if vid_cap.isOpened():
@@ -145,4 +211,4 @@ if __name__ == "__main__":
         if ret:
             frame = frame[4:41, 0:568]
 
-            print(ocr.run_pytesseract(frame))
+            print(ocr.run_pytesseract_noMilliSec(frame).microsecond / 1000)
