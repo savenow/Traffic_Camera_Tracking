@@ -644,10 +644,8 @@ class PostProcess():
                     prev_point = base_coordinate
                     previous_point = current_point
 
-                    
                 ve_df = pd.DataFrame(velocity_estimation)
                 ve_df['Speed'] = ve_df['Speed'].round(1)
-                
                 
                 # Inserting the 'Speed' Values back into the tracker group
                 single_tracker_group['Speed'] = single_tracker_group['Video_Internal_Timer'].map(ve_df.set_index('Video_Internal_Timer')['Speed'])
@@ -879,7 +877,6 @@ class PostProcess():
                     f.writelines(f"Bus_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
             
             f.close()
-
         
     def run(self): # Main function of the class which runs all the post-processing and saves the video
         df_duplicate = self.detections_dataframe.copy()
@@ -898,6 +895,8 @@ class PostProcess():
         self.final_df = self.class_id_matching(speed_df)
         self.final_df.to_csv(f'{self.output_directory}/{self.file_name}_final.csv')
         print('-> Finished Class_ID Matching')
+
+
         # print('\nNow, saving the video ...')
 
         df_with_index = self.group_by_internalTimer_with_index(self.final_df)

@@ -113,7 +113,7 @@ class Visualizer():
                 for v in values:
                     color = self.classID_dict[v[2]][1]
                     cv2.circle(minimap_img, (int(v[0]),int(v[1])), 1, color, -1, cv2.LINE_AA)
-        return minimap_img 
+        return minimap_img
 
     def drawEmpty(self, frame, frameCount):
         """For images with no detections, displaying minimap and updating trajectory values
