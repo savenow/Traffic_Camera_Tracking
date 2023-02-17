@@ -28,6 +28,7 @@ from sort_yoloV5 import Sort
 from visualizer import Visualizer, Minimap
 from calibration import Calibration
 from timestamp_ocr import OCR_TimeStamp
+import traffic_light_region as light_state
 
 # from extract_stored_detections_copy import PostProcess
 from post_process_multiProcess import PostProcess
@@ -41,7 +42,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 class Inference():
     def __init__(self, input, model_weights, output, minimap, 
                 trj_mode, disable_post_process, save_infer_video, 
-                imgSize, update_rate, save_class_frames):        
+                imgSize, update_rate, save_class_frames, traffic_light_info,light_region, night_mode):        
         # Main config
         main_config_path = 'configs/main_param.yaml'
         with open(main_config_path) as file_stream:
@@ -115,7 +116,7 @@ class Inference():
                 os.makedirs(self.output_dir_path)
                 os.makedirs(self.output_dir_path/"Save-frames")
             else:
-                shutil.rmtree(self.output_dir_path)           # Removes all the subdirectories!
+                shutil.rmtree(self.output_dir_path)       # Removes all the subdirectories!
                 os.makedirs(self.output_dir_path)
                 os.makedirs(self.output_dir_path/"Save-frames")
 
@@ -143,6 +144,14 @@ class Inference():
         # For storing conversion values
         self.Minimap_storage = Minimap()
 
+        # Intializing Traffic light region parameters
+        self.traffic_light_info = traffic_light_info
+        if self.traffic_light_info:
+            self.light_region = light_region
+            self.night_mode = night_mode
+            self.state = light_state.ROI(self.input, self.light_region, self.night_mode, str(self.output_dir_path))
+
+        # Main Inference
         self.runInference()
     
     def UpdateTracker(self, pred):
@@ -240,7 +249,7 @@ class Inference():
         framecount = 0
         time_start = time_sync()
         for path, im, im0, vid_cap, s, videoTimer in dataset:
-            framecount += 1
+            framecount += 1 
             if framecount < -1:
                 continue
             elif framecount > 108000:
@@ -248,16 +257,15 @@ class Inference():
                 break
 
             storing_output = {}
-            storing_output["Video_Internal_Timer"]= videoTimer
+            storing_output["Video_Internal_Timer"] = videoTimer
             
             # OCR Reading Timestamp
             if self.main_config_dict['is_ocr_enabled']:
-                ocr_mode = 'withoutMilliSec' # TODO: Change the value to 'withMilliSec' or 'withoutMilliSec'
+                ocr_mode = 'withMilliSec' # TODO: Change the value to 'withMilliSec' or 'withoutMilliSec'
                 if ocr.need_pyt or framecount == 1:
                     time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+self.main_config_dict['ocr_y_min']:ocr_vertical_offset+self.main_config_dict['ocr_y_max'], self.main_config_dict['ocr_x_min']:self.main_config_dict['ocr_x_max']], videoTimer), ocr_mode)
                 else:
                     time_ocr_frame  = ocr.run_ocr(videoTimer, ocr_mode)
-
                 if isinstance(time_ocr_frame, datetime):
                     date = time_ocr_frame.strftime("%d.%m.%Y")
                     time = time_ocr_frame.strftime("%H:%M:%S")
@@ -278,6 +286,28 @@ class Inference():
                     storing_output["Date"] = np.nan
                     storing_output["Time"] = np.nan
                     storing_output["Millisec"] = np.nan
+
+            if self.traffic_light_info:
+                # Traffic light state
+                img_red = self.state.region_of_interest(im0, self.state.red_region)
+                img_green = self.state.region_of_interest(im0, self.state.green_r
+                    storing_output["Time"] = np.nan
+                    storing_output["Millisec"] = np.nan
+            else:
+                    storing_output["Date"] = np.nan
+                    storing_output["Time"] = np.nan
+                    storing_output["Millisec"] = np.nan
+
+            if self.traffic_light_info:
+                # Traffic light state
+                img_red = self.state.region_of_interest(im0, self.state.red_region)
+                img_green = self.state.region_of_interest(im0, self.state.green_region)
+
+                # Light Stateegion)
+
+                # Light State
+                current_state = self.state.light_state([img_red, img_green])
+                storing_output['State'] = current_state
 
             # Image Preprocessing for inference
             t1 = time_sync()
@@ -306,7 +336,7 @@ class Inference():
             # Process predictions
             seen += 1
 
-            s += '%gx%g ' % im.shape[2:] 
+            s += '%gx%g ' % im.shape[2:]
 
             if len(pred):
                 # Rescale boxes from img_size to im0 size
@@ -315,7 +345,7 @@ class Inference():
                 # Print results
                 for c in pred[:, -1].unique():
                     n = (pred[:, -1] == c).sum()  # detections per class
-                    s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string    
+                    s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string 
         
             # Save the images or videos
             if self.inference_mode == 'SingleImage':
@@ -339,6 +369,7 @@ class Inference():
                 t5 = time_sync()
                 dt[3] += t5 - t4
                 print(f'{s}Done. ({1/(t3 - t2):.3f}fps)(Post: {((t5 - t4)*1000):.3f}ms)')
+
 
                 if self.save_infer_video:
                     if len(self.tracker) > 0:
@@ -369,12 +400,14 @@ class Inference():
         df = pd.DataFrame(output_data)
         df.to_csv(f"{self.output_dir_path}/{str(self.file_stem_name)}_raw.csv")
 
-
     def parse_opt():
         parser = argparse.ArgumentParser()
-        parser.add_argument('--input', type=str, default=None, help=['path to input file(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
-        parser.add_argument('--model_weights', type=str, default=None, help='model\'s weights path(s)')
-        parser.add_argument('--output', type=str, default=None, help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
+        #parser.add_argument('--input', type=str, default=None, help=['path to input file(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
+        parser.add_argument('--input', type=str, default='/home/mobilitylabextreme002/Desktop/Pixel Reading using Opencv/videos/short_video.mp4', help=['path to input file(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
+        #parser.add_argument('--model_weights', type=str, default=None, help='model\'s weights path(s)')
+        parser.add_argument('--model_weights', type=str, default='../weights/All_5_combined/weights/best.engine', help='model\'s weights path(s)')
+        #parser.add_argument('--output', type=str, default=None, help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
+        parser.add_argument('--output', type=str, default='../test_for_light.mkv', help=['path to save result(s)', '.MP4/.mkv/.png/.jpg/.jpeg'])
         parser.add_argument('--minimap', default=False, action='store_true', help='Option to show the minimap in output -- True (or) False (default: False)')
         parser.add_argument('--trj_mode', default=False, action='store_true', help='Option to show trajectory in output -- True (or) False (default: False)')
         parser.add_argument('--imgSize','--img','--img_size', nargs='+', type=int, default=[1088, 1920], help='inference size h,w')
@@ -382,7 +415,10 @@ class Inference():
         parser.add_argument('--disable_post_process', default=False, action='store_true', help='Disable Post-Processing (default: False)')
         parser.add_argument('--save_infer_video', default=False, action='store_true', help='Enable/Disable saving infer video before post-processing -- True (or) False (default: False if disable_post_process, otherwise True)')
         parser.add_argument('--save_class_frames', type=int, default=0, help='Save frames of requied class from 0 to 6 classes\
-                                                    (0-Escooter, 1-Pedestrian, 2-Cyclist, 3-Motorcycle, 4-Car, 5-Truck, 6-Bus)')        
+                                                    (0-Escooter, 1-Pedestrian, 2-Cyclist, 3-Motorcycle, 4-Car, 5-Truck, 6-Bus)')
+        parser.add_argument('--traffic_light_info', type=bool, default=False, help="True to gather traffic light state information of the pedestrians crossing!")
+        parser.add_argument("--light_region", type=list, default = [[350, 1504, 354, 1508], [358, 1504, 362, 1508], [217, 1464, 220, 1467], [224, 1463, 227, 1466]], help="coordinates of light region (Red and Green together) eg. [x, y, width, height]")         
+        parser.add_argument("--night_mode", type=bool, default=False, help='detect in night video or day video eg. default is false detects for day light video')
         opt = parser.parse_args()
         #opt.imgSize *= 2 if len(opt.imgSize) == 1 else 1
         print_args(FILE.stem, opt)

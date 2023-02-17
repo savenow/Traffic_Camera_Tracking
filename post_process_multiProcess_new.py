@@ -528,7 +528,7 @@ class PostProcess():
                             'Video_Internal_Timer': video_timer_df[index], 
                             'Date': row_tracker_id['Date'], 'Time': row_tracker_id['Time'], 'Millisec': row_tracker_id['Millisec'], 'Tracker_ID': unique_tracker_id, 
                             'Class_ID': np.nan, 'Conf_Score': np.nan, 'BBOX_TopLeft_x': np.nan, 'BBOX_TopLeft_y': np.nan,
-                            'BBOX_BottomRight_x': np.nan, 'BBOX_BottomRight_y': np.nan
+                            'BBOX_BottomRight_x': np.nan, 'BBOX_BottomRight_y': np.nan, 'Light State' :  row_tracker_id['State']
                         }
                         final_list_tracker_id.append(new_row)
                     else:
@@ -554,7 +554,7 @@ class PostProcess():
                             'Video_Internal_Timer': video_timer_df[index], 
                             'Date': row_tracker_id['Date'], 'Time': row_tracker_id['Time'], 'Millisec': row_tracker_id['Millisec'], 'Tracker_ID': unique_tracker_id, 
                             'Class_ID': row_tracker_id['Class_ID'], 'Conf_Score': row_tracker_id['Conf_Score'], 'BBOX_TopLeft_x': x1, 'BBOX_TopLeft_y': y1,
-                            'BBOX_BottomRight_x': x2, 'BBOX_BottomRight_y': y2
+                            'BBOX_BottomRight_x': x2, 'BBOX_BottomRight_y': y2, 'Light State' :  row_tracker_id['State']
                         }
                         final_list_tracker_id.append(new_row)
                     vidTimer_present_in_interpolated_df.append(video_timer_df[index])

@@ -52,11 +52,13 @@ class OCR_TimeStamp:
 
         if not any(c for c in text_ocr if not c.isalnum() and not c.isspace()):
             text_ocr = text_ocr.split(' ')
-            if len(text_ocr) == 8:
+            print(text_ocr)
+            # if len(text_ocr) == 8:
+            if len(text_ocr) == 7:
                 # Reorganzing Datetime-stamp for PyTesseract to ignore millisec and adding ':' like 'hrs:min:sec' (This : is present in video but are filtered out as noise)
                 time_hr_min_sec = ':'.join(text_ocr[3:6])
-                millisec = text_ocr[7]
-                text_ocr = text_ocr[0] + " " + text_ocr[1] + " " + text_ocr[2] + " " + time_hr_min_sec + " " + text_ocr[6]
+                millisec = text_ocr[6]
+                text_ocr = text_ocr[0] + " " + text_ocr[1] + " " + text_ocr[2] + " " + time_hr_min_sec
                 try:
                     millisec = int(millisec)
                     if (millisec / 100 < 1):
@@ -125,7 +127,7 @@ class OCR_TimeStamp:
             if len(text_ocr) == 7:
                 # Reorganzing Datetime-stamp for PyTesseract to ignore millisec and adding ':' like 'hrs:min:sec' (This : is present in video but are filtered out as noise)
                 time_hr_min_sec = ':'.join(text_ocr[3:6])               
-                text_ocr = text_ocr[0] + " " + text_ocr[1] + " " + text_ocr[2] + " " + time_hr_min_sec + " " + text_ocr[6]
+                text_ocr = text_ocr[0] + " " + text_ocr[1] + " " + text_ocr[2] + " " + time_hr_min_sec # + " " + text_ocr[6]
                 
                 ocr_string = f'[OCR] Output from PyTesseract: {text_ocr}'
                 try:
@@ -203,12 +205,24 @@ class OCR_TimeStamp:
 
 if __name__ == "__main__":
     ocr = OCR_TimeStamp()
-    video_path = '/home/mobilitylabextreme002/Videos/fkk_new_videos/20220913_074500/20220913_074500_000.mp4'
+    # video_path = '/home/mobilitylabextreme002/Videos/fkk_new_videos/20220913_074500/20220913_074500_000.mp4'
+    video_path = '/home/mobilitylabextreme002/Videos/small_clipped/Test_for_pascal/test_for_pascal.mp4'
     vid_cap = cv2.VideoCapture(video_path)
 
-    if vid_cap.isOpened():
+    while (vid_cap.isOpened()):
+        # if vid_cap.isOpened():
         ret, frame = vid_cap.read()
         if ret:
             frame = frame[4:41, 0:568]
 
-            print(ocr.run_pytesseract_noMilliSec(frame).microsecond / 1000)
+            # print(ocr.run_pytesseract_noMilliSec(frame).microsecond / 1000)
+            print(ocr.run_pytesseract_noMilliSec(frame))
+        
+            if cv2.waitKey(30) & 0xFF == ord('q'):
+                break
+        else:
+            break
+    
+    vid_cap.release()
+    cv2.destroyAllWindows()
+
