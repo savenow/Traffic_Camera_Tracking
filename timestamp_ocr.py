@@ -89,7 +89,74 @@ class OCR_TimeStamp:
                 except ValueError:
                     print('[OCR] Error reading milliseconds')
         return None
+    
+    def run_pytesseract_masked(self, cropped_img):
+        print("[DEBUG] Running masked OCR")
+        gray = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(gray, 220,255,0)
 
+        output = cv2.connectedComponentsWithStats(thresh, 4, cv2.CV_32S)
+        (numLabels, labels, stats, centroids) = output
+        mask = np.zeros(gray.shape, dtype="uint8")
+
+        # Filtering out noise and consecutively adding connected characters to the empty mask
+        for i in range(0, numLabels):
+            x = stats[i, cv2.CC_STAT_LEFT]
+            y = stats[i, cv2.CC_STAT_TOP]
+            w = stats[i, cv2.CC_STAT_WIDTH]
+            h = stats[i, cv2.CC_STAT_HEIGHT]
+            area = stats[i, cv2.CC_STAT_AREA]
+            # (cX, cY) = centroids[i]
+
+            keepWidth = w > 5 and w < 19
+            keepHeight = h > 10 and h < 27
+            keepArea = area > 30 and area < 200
+            keepY = y > 2  and y < 41
+
+            if all((keepWidth, keepHeight, keepArea, keepY)):
+                componentMask = (labels == i).astype("uint8") * 255
+                mask = cv2.bitwise_or(mask, componentMask)
+        
+        # Converting the image to text
+        text_ocr = pytesseract.image_to_string(
+            mask, lang='eng', 
+            config='--psm 6 --oem 1'#-c tessedit_char_whitelist=1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        )[:-1]
+
+        # print(text_ocr)
+        # text_ocr_modified = ''.join(text_ocr.split(' '))    
+        # print(text_ocr_modified)
+
+        if not any(c for c in text_ocr if not c.isalnum() and not c.isspace()):
+            text_ocr_modified = ''.join(text_ocr.split(' '))    
+            
+            if len(text_ocr_modified) in [16]: # For days with only one digit (first 9 days of a month)
+                day = int(text_ocr_modified[0])
+                month = int(text_ocr_modified[1:3])
+                year = int(text_ocr_modified[3:7])
+                hr = int(text_ocr_modified[7:9])
+                min = int(text_ocr_modified[9:11])
+                sec = int(text_ocr_modified[11:13])
+                microSec = int(text_ocr_modified[13:16]) * 1000
+
+                extracted_date = datetime(year, month, day, hr, min, sec, microSec)
+                return extracted_date
+            
+            elif len(text_ocr_modified) in [17]: # For rest of the days
+                day = int(text_ocr_modified[0:2])
+                month = int(text_ocr_modified[2:4])
+                year = int(text_ocr_modified[4:8])
+                hr = int(text_ocr_modified[8:10])
+                min = int(text_ocr_modified[10:12])
+                sec = int(text_ocr_modified[12:14])
+                microSec = int(text_ocr_modified[14:17]) * 1000
+
+                extracted_date = datetime(year, month, day, hr, min, sec, microSec)
+                return extracted_date
+
+        return None
+
+    
     def run_pytesseract_noMilliSec(self, cropped_img):
         gray = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2GRAY)
         ret, thresh = cv2.threshold(gray, 220,255,0)
@@ -150,13 +217,17 @@ class OCR_TimeStamp:
                           
         return None
 
-    def run_ocr(self, input, mode='withMilliSec'):
+    def run_ocr(self, input, mode='masked'):
         if self.framecount == 0: # For the first frame of the video, running PyTesseract
             (c_img, videotimer) = input
             if mode == 'withMilliSec':
                 time_from_pytes = self.run_pytesseract(c_img)
             elif mode == 'withoutMilliSec':
                 time_from_pytes = self.run_pytesseract_noMilliSec(c_img)
+            elif mode == 'masked':
+                time_from_pytes = self.run_pytesseract_masked(c_img)
+
+            
             if not self.need_pyt:
                 self.timeOCR = time_from_pytes
                 self.framecount += 1
@@ -169,6 +240,11 @@ class OCR_TimeStamp:
                 time_from_pytes = self.run_pytesseract(c_img)
             elif mode == 'withoutMilliSec':
                 time_from_pytes = self.run_pytesseract_noMilliSec(c_img)
+            elif mode == 'masked':
+                time_from_pytes = self.run_pytesseract_masked(c_img)
+            
+            print(time_from_pytes, type(time_from_pytes))
+            
             if isinstance(time_from_pytes, datetime):
                 time_from_pytes = time_from_pytes.replace(microsecond=0)
                 current_internal_time = self.timeOCR + timedelta(microseconds=(videotimer-self.prevTimer)*1000)
@@ -206,17 +282,27 @@ class OCR_TimeStamp:
 if __name__ == "__main__":
     ocr = OCR_TimeStamp()
     # video_path = '/home/mobilitylabextreme002/Videos/fkk_new_videos/20220913_074500/20220913_074500_000.mp4'
-    video_path = '/home/mobilitylabextreme002/Videos/small_clipped/Test_for_pascal/test_for_pascal.mp4'
+    video_path = '/home/mobilitylabextreme002/Videos/small_clipped/raghav_calibration/raghav_clipped.mp4'
+    # video_path = '/home/mobilitylabextreme002/Videos/small_clipped/test_for_state_light.mkv'
+    debug_output_path = "outputs/debug_ocr"
     vid_cap = cv2.VideoCapture(video_path)
+    frame_count = 0
+    os.makedirs(debug_output_path, exist_ok=True)
 
     while (vid_cap.isOpened()):
         # if vid_cap.isOpened():
         ret, frame = vid_cap.read()
         if ret:
-            frame = frame[4:41, 0:568]
+            frame_count += 1
+            
+            frame = frame[4:44, 0:410]
+            if frame_count == 1:
+                cv2.imwrite(os.path.join(debug_output_path, "debug_ocr_crop.png"), frame)
 
-            # print(ocr.run_pytesseract_noMilliSec(frame).microsecond / 1000)
-            print(ocr.run_pytesseract_noMilliSec(frame))
+            output = ocr.debug_run_pytesseract(frame)
+            # if output == None:
+            #     cv2.imwrite(os.path.join(debug_output_path, f"debug_ocr_error_frame{frame_count}.png"), frame)
+            # # print(output)
         
             if cv2.waitKey(30) & 0xFF == ord('q'):
                 break

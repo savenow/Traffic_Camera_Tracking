@@ -18,9 +18,9 @@ iou_threshold: 0.3
 # OCR-time detection box params
 is_ocr_enabled: true ## Flag not tested. Change with caution !! 
 ocr_y_min: 4
-ocr_y_max: 41
+ocr_y_max: 44
 ocr_x_min: 0
-ocr_x_max: 568
+ocr_x_max: 410
 
 ## Post-processing
 percentage_cpu_processes: 0.4 # Percentage of cpu cores to use. Using all of them leads to massive RAM usage and causing crashes

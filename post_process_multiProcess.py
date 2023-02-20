@@ -896,9 +896,6 @@ class PostProcess():
         self.final_df.to_csv(f'{self.output_directory}/{self.file_name}_final.csv')
         print('-> Finished Class_ID Matching')
 
-
-        # print('\nNow, saving the video ...')
-
         df_with_index = self.group_by_internalTimer_with_index(self.final_df)
         df_latest = self.Save_angle_to_csv(df_with_index, self.final_df)
         df_latest.to_csv(f'{self.output_directory}/{self.file_name}_latest.csv')

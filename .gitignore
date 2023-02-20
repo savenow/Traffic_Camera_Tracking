@@ -12,3 +12,4 @@ post-process_test.ipynb
 *.mp4
 *.ipynb
 *.out
+outputs**/
