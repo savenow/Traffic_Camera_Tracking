@@ -266,14 +266,14 @@ class Inference():
                     time_ocr_frame = ocr.run_ocr((im[ocr_vertical_offset+self.main_config_dict['ocr_y_min']:ocr_vertical_offset+self.main_config_dict['ocr_y_max'], self.main_config_dict['ocr_x_min']:self.main_config_dict['ocr_x_max']], videoTimer), ocr_mode)
                 else:
                     time_ocr_frame  = ocr.run_ocr(videoTimer, ocr_mode)
-                print(time_ocr_frame)
+
                 if isinstance(time_ocr_frame, datetime):
                     date = time_ocr_frame.strftime("%d.%m.%Y")
                     time = time_ocr_frame.strftime("%H:%M:%S")
                     storing_output["Date"] = date
                     storing_output["Time"] = time
                     
-                    if ocr_mode == 'withMilliSec':
+                    if ocr_mode in ['withMilliSec', 'masked']:
                         millisec = int(time_ocr_frame.microsecond / 1000)
                         storing_output["Millisec"] = millisec
                     else:

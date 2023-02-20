@@ -123,9 +123,6 @@ class OCR_TimeStamp:
             config='--psm 6 --oem 1'#-c tessedit_char_whitelist=1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
         )[:-1]
 
-        # print(text_ocr)
-        # text_ocr_modified = ''.join(text_ocr.split(' '))    
-        # print(text_ocr_modified)
 
         if not any(c for c in text_ocr if not c.isalnum() and not c.isspace()):
             text_ocr_modified = ''.join(text_ocr.split(' '))    
@@ -140,6 +137,7 @@ class OCR_TimeStamp:
                 microSec = int(text_ocr_modified[13:16]) * 1000
 
                 extracted_date = datetime(year, month, day, hr, min, sec, microSec)
+                self.need_pyt = False
                 return extracted_date
             
             elif len(text_ocr_modified) in [17]: # For rest of the days
@@ -152,6 +150,7 @@ class OCR_TimeStamp:
                 microSec = int(text_ocr_modified[14:17]) * 1000
 
                 extracted_date = datetime(year, month, day, hr, min, sec, microSec)
+                self.need_pyt = False
                 return extracted_date
 
         return None
@@ -221,12 +220,11 @@ class OCR_TimeStamp:
         if self.framecount == 0: # For the first frame of the video, running PyTesseract
             (c_img, videotimer) = input
             if mode == 'withMilliSec':
-                time_from_pytes = self.run_pytesseract(c_img)
+                time_from_pytes = self.run_pytesseract(c_img)    
             elif mode == 'withoutMilliSec':
                 time_from_pytes = self.run_pytesseract_noMilliSec(c_img)
             elif mode == 'masked':
                 time_from_pytes = self.run_pytesseract_masked(c_img)
-
             
             if not self.need_pyt:
                 self.timeOCR = time_from_pytes
@@ -242,8 +240,7 @@ class OCR_TimeStamp:
                 time_from_pytes = self.run_pytesseract_noMilliSec(c_img)
             elif mode == 'masked':
                 time_from_pytes = self.run_pytesseract_masked(c_img)
-            
-            print(time_from_pytes, type(time_from_pytes))
+
             
             if isinstance(time_from_pytes, datetime):
                 time_from_pytes = time_from_pytes.replace(microsecond=0)
