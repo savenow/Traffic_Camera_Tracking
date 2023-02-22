@@ -1,19 +1,53 @@
 import cv2
 import numpy as np
- 
-def projectPoint(x, y, h, to_round=False):
-    p = np.array((x,y,1)).reshape((3,1))
+import math
+from tqdm import tqdm
+
+def projectPoint(point, h, offset_product=[1, 1], offset_sum=[0, 0]):
+    p = np.array((point[0], point[1], 1)).reshape((3,1))
     temp_p = h.dot(p)
     sum = np.sum(temp_p ,1)
-    if to_round:
-        px = round(sum[0]/sum[2], -5)
-        py = round(sum[1]/sum[2], -5)
-    else:
-        px = sum[0]/sum[2]
-        py = sum[1]/sum[2]
+    px = sum[0]/sum[2] * offset_product[0] + offset_sum[0]
+    py = sum[1]/sum[2] * offset_product[1] + offset_sum[1]
     return px, py
 
-def getError(src_pts, target_pts, h):
+def getDistance(point_1, point_2):
+    R = 6371e3
+    theta_1 = point_1[0] * math.pi/180
+    theta_2 = point_2[0] * math.pi/180
+    delta_lat = (point_2[0] - point_1[0]) * math.pi/180
+    delta_long = (point_2[1] - point_1[1]) * math.pi/180
+
+    a = math.sin(delta_lat/2) * math.sin(delta_lat/2) + math.cos(theta_1) * math.cos(theta_2) * \
+        math.sin(delta_long/2) * math.sin(delta_long/2)
+    c = math.atan2(math.sqrt(a), math.sqrt(1-a))
+    d = R * c
+    return d
+
+def getProjectionError_distance(src_points, dst_points, homo_mtx, offset_product=[1, 1], offset_sum=[0, 0]):
+    src_points_withZ = np.hstack((src_points, np.ones((src_points.shape[0], 1), dtype=src_points.dtype))).reshape(-1, 3, 1)
+
+    temp_p = homo_mtx.dot(src_points_withZ)
+    sum = np.sum(temp_p ,2)
+    px = (sum[0]/sum[2]) * offset_product[0] + offset_sum[0]
+    py = sum[1]/sum[2] * offset_product[1] + offset_sum[1]
+    
+    transformed_points = np.concatenate((np.expand_dims(px, 1), np.expand_dims(py, 1)), 1)
+
+    # Calculate distances between points    
+    R = 6371e3
+    theta_1 = transformed_points[:, 0] * np.pi/180
+    theta_2 = dst_points[:, 0] * np.pi/180
+    delta_lat = (dst_points[:, 0] - transformed_points[:, 0]) * np.pi/180
+    delta_long = (dst_points[:, 1] - transformed_points[:, 1]) * np.pi/180
+
+    a = np.sin(delta_lat/2) * np.sin(delta_lat/2) + np.cos(theta_1) * np.cos(theta_2) * \
+        np.sin(delta_long/2) * np.sin(delta_long/2)
+
+    c = np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    d = R * c
+
+    return d
     
 if __name__ == '__main__' :
     # camera points
@@ -26,7 +60,6 @@ if __name__ == '__main__' :
         [410,	800],
         [678,	740],
         [682,	871],
-        # [776,	1050],
         [851,	692],
         [1022,	693],
         [1052,	898],
@@ -50,12 +83,12 @@ if __name__ == '__main__' :
         [612,	508],
         [1149,	58],
         [1050,	47],
-        [852, 53]
+        [852,   53]
     ])
- 
+
     # Map long, lat
     pts_dst = np.array([
-        [48.7755537320585, 11.4251618004278],
+        [48.7755537320585,  11.4251618004278],
         [48.77556477958027, 11.425100109620338],
         [48.775444582411495, 11.424962646408337],
         [48.775351782930436, 11.424975386901176],
@@ -63,7 +96,6 @@ if __name__ == '__main__' :
         [48.77519534912667, 11.424816466017038],
         [48.775150274890656, 11.424890897317315],
         [48.77511845775853, 11.424838594241443],
-        # [48,775064, 11,424798],
         [48.77512155109042, 11.424941859288717],
         [48.77508973394008, 11.424987456842038],
         [48.77504377579844, 11.424891567869613],
@@ -125,27 +157,41 @@ if __name__ == '__main__' :
         [5.30740091163, 5.53348393282],
         [5.39268813839, 5.48118085704]
     ])
- 
-    # print(pts_dst.dtype)
+    
     pts_dst_f32 = np.float32(pts_dst)
     pts_dst_decimal_f32 = np.float32(pts_dst_decimal)
     pts_src_f32 = np.float32(pts_src)
-    # print(pts_dst_f32, pts_dst_f32.dtype, pts_src_f32.dtype)
     
-    # Calculate Homography
-    h1, status = cv2.findHomography(pts_src_f32, pts_dst_decimal_f32)
-    print(h1)
-    print(projectPoint(1060, 692, h1))
+    TOTAL_NUM_SAMPLES = pts_src_f32.shape[0] # 32
+    SAMPLE_SIZES = range(5, TOTAL_NUM_SAMPLES)
 
-    h2, status = cv2.findHomography(pts_src_f32, pts_dst_f32)
-    print(h2)
-    print(projectPoint(851, 692, h2))
-    # # Warp source image to destination based on homography
-    # im_out = cv2.warpPerspective(im_src, h, (im_dst.shape[1],im_dst.shape[0]))
- 
-    # # Display images
-    # cv2.imshow("Source Image", im_src)
-    # cv2.imshow("Destination Image", im_dst)
-    # cv2.imshow("Warped Source Image", im_out)
- 
-    # cv2.waitKey(0)
+    total_lat_errors = []
+    total_long_errors = []
+    total_errors = []
+
+    least_total_error = 1000
+    final_data = None
+
+    indices_list = np.arange(TOTAL_NUM_SAMPLES)
+
+    for sample_size in tqdm(SAMPLE_SIZES):
+        for iterator in tqdm(range(1000)):
+            # print(f"Processing {sample_size}, {iterator}")
+            selected_indices = np.random.choice(indices_list, sample_size)
+
+            selected_src = np.take(pts_src_f32, selected_indices, axis=0)
+            selected_dst = np.take(pts_dst_decimal_f32, selected_indices, axis=0)
+            homo_mtx, status = cv2.findHomography(selected_src, selected_dst)
+
+            total_error = np.percentile(getProjectionError_distance(pts_src_f32, pts_dst_f32, homo_mtx, offset_product=[1e-3, 1e-3], offset_sum=[48.77, 11.42]), 90)
+            if total_error < least_total_error:
+                least_total_error = total_error
+                final_data = (least_total_error, np.copy(homo_mtx), sample_size)
+
+    print(f"Average error (in m): {final_data[0]}")
+    print(f"Homography mtx: {final_data[1]}")
+    print(f"Number of samples used: {final_data[2]}")
+
+    output_file_location = "map_files/homography_CameraToLatLong.npy" 
+    print(f"Finished. Saved to {output_file_location}")
+    np.save(output_file_location, final_data[1])

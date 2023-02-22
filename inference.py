@@ -170,10 +170,10 @@ class Inference():
             class_id = detection[5]
             center_x = (detection[0] + detection[2])/2 
 
-            if class_id in (0,1,2):
-                _, max_y = sorted((detection[1], detection[3]))
-            elif class_id in (3,4,5,6):
-                max_y = (detection[1] + detection[3])/2     # Center of bbox for classes other than Escooter, Cyclist, and Pedestrian
+            if class_id in (0, 1, 2): 
+                _, max_y = sorted((detection[1], detection[3])) # Foot of bbox for classes Escooter, Cyclist, and Pedestrian
+            elif class_id in (3, 4, 5, 6):
+                max_y = (detection[1] + detection[3])/2         # Center of bbox for other classes
 
             trackID = int(detection[9])
             self.trackDict[trackID].append((int(center_x), int(max_y)))
