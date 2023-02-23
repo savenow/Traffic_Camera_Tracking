@@ -15,8 +15,8 @@ def click_event(event, x, y, flags, params):
         # displaying the coordinates
         # on the image window
         font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img, str(x/2) + ',' +
-                    str(y/2), (x+2,y+2), font,
+        cv2.putText(img, str(x) + ',' + str(y), 
+                    (x+2,y+2), font,
                     1, (255, 0, 0), 2)
         cv2.circle(img, (x, y), 2, (0, 255, 0), -1)
         cv2.imshow('image', img)
@@ -25,9 +25,10 @@ def click_event(event, x, y, flags, params):
 if __name__=="__main__":
   
     # reading the image
-    img = cv2.imread('/home/mobilitylabextreme002/Desktop/Traffic_Camera_Tracking/map_files/map_satellite_cropped.png', 1)
+    # img = cv2.imread('/home/mobilitylabextreme002/Desktop/Traffic_Camera_Tracking/map_files/map_satellite_cropped.png', 1)
+    img = cv2.imread('/home/mobilitylabextreme002/Desktop/Traffic_Camera_Tracking/outputs/lat_long_homography_src.png', 1)
     print(img.shape)
-    img = cv2.resize(img, [img.shape[0]*2, img.shape[1]*2])
+    # img = cv2.resize(img, [img.shape[0], img.shape[1]])
     # displaying the image
     cv2.imshow('image', img)
   

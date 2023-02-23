@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore") # To ignore certain warnings from Pandas
 from tqdm.auto import tqdm
 
 from visualizer import Visualizer, Minimap
-from calibration import Calibration
+from calibration import Calibration, Calibration_LatLong
 
 from collections import namedtuple, defaultdict
 from heading_angle import Angle
@@ -226,9 +226,9 @@ class PostProcess():
 
                             image = self.Visualize.drawAll(outer_array, frame, framecounter, self.output_directory)
                             self.video_writer.write(image)
-
                 else:
                     break
+
         except:
             # Release resources
             self.video_cap.release()
@@ -578,7 +578,7 @@ class PostProcess():
         interpolated_final_df = pd.concat([interpolated_df, missing_vidTimer_df], ignore_index=True).sort_values(by=['Video_Internal_Timer']).reset_index(drop=True)
         return interpolated_final_df
 
-    def velocity_estimation(self, interpolated_df, video_fps=30):
+    def velocity_estimation(self, interpolated_df):
         """Groups the entire .csv by tracker_id and rolling average on each of the BBOX Coordinates to remove noise from detections. 
         Then calculating the center point of the base of each bbox and finding their correspoding world coordinates using homography matrix
         Calculating the distance between points in consecutive frames and converting them into km/h.
@@ -591,7 +591,8 @@ class PostProcess():
             df_interpolated_dup (pd.Dataframe): Dataframe containing the speed of each tracker in a separate column 'Speed'
         """
         rolling_window_size = self.main_config_dict['velocity_estimation_rolling_window_size']
-        camera_calib = Calibration()
+        # camera_calib = Calibration()
+        camera_calib = Calibration_LatLong()
         df_interpolated_dup = interpolated_df.copy()
         unique_trackers = df_interpolated_dup.Tracker_ID.unique()
         tracker_group = df_interpolated_dup.groupby('Tracker_ID')
@@ -604,35 +605,36 @@ class PostProcess():
                 bbox_positions['BBOX_TopLeft_y'] = bbox_positions['BBOX_TopLeft_y'].rolling(window=rolling_window_size).mean()
                 bbox_positions['BBOX_BottomRight_x'] = bbox_positions['BBOX_BottomRight_x'].rolling(window=rolling_window_size).mean()
                 bbox_positions['BBOX_BottomRight_y'] = bbox_positions['BBOX_BottomRight_y'].rolling(window=rolling_window_size).mean()
-                
 
                 bbox_positions = list(bbox_positions.to_records(index=False))
-                prev_point = -1
+                previous_point = -1
                 velocity_estimation = []
 
                 for vid_timer, x1, y1, x2, y2, class_id in bbox_positions: 
                     center_x = (x1 + x2)/2
 
                     if str(class_id)!='nan':
-                        if class_id in (0,1,2): 
+                        if class_id in (0, 1, 2): 
                             _, max_y = sorted((y1, y2))
-                        elif class_id in (3,4,5,6):
+                        elif class_id in (3, 4, 5, 6):
                             max_y = (y1 + y2)/2
                     else:
                         _, max_y = sorted((y1, y2))
                     
-                    base_coordinate = camera_calib.projection_pixel_to_world((center_x, max_y)) # Calculating the center of point of the bottom edge of BBOX and calculating it's world coordinates with homography
-                    base_coordinate = (base_coordinate[0],base_coordinate[1])
+                    # Calculating the center of point of the bottom edge of BBOX and calculating it's world coordinates with homography
+                    # base_coordinate = camera_calib.getDistance() # camera_calib.projection_pixel_to_world((center_x, max_y)) 
+                    # base_coordinate = (base_coordinate[0],base_coordinate[1])
                     current_point = (center_x, max_y)
 
-                    if prev_point == -1:
+                    if previous_point == -1:
                         new_row_withSpeed = {
                             'Video_Internal_Timer': vid_timer, 'Speed': 0, 'Arrow_points': list([0,0])
                         }   
                     else:
-                        distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
+                        # distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
+                        distance_metres = camera_calib.getDistance(previous_point, current_point)
                         speed_kmH = float(distance_metres * self.video_fps * 3.6) # Converting meters/s to km/h and update rate is equal to video's fps (default 30, this is also the rate at which data is sampled in the .csv files)
-                        previous_point = previous_point
+                        # previous_point = previous_point
 
                         if speed_kmH < 1:
                             speed_kmH =  0 # To prevent small movements in the BBOX_Positions when the VRU's are standing
@@ -641,7 +643,7 @@ class PostProcess():
                             'Video_Internal_Timer': vid_timer, 'Speed': speed_kmH, 'Arrow_points': [previous_point[0], previous_point[1]]
                         }
                     velocity_estimation.append(new_row_withSpeed)
-                    prev_point = base_coordinate
+                    #prev_point = base_coordinate
                     previous_point = current_point
 
                 ve_df = pd.DataFrame(velocity_estimation)

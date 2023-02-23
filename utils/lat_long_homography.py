@@ -44,7 +44,7 @@ def getProjectionError_distance(src_points, dst_points, homo_mtx, offset_product
     a = np.sin(delta_lat/2) * np.sin(delta_lat/2) + np.cos(theta_1) * np.cos(theta_2) * \
         np.sin(delta_long/2) * np.sin(delta_long/2)
 
-    c = np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     d = R * c
 
     return d

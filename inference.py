@@ -26,7 +26,7 @@ from hubconf import custom
 
 from sort_yoloV5 import Sort
 from visualizer import Visualizer, Minimap
-from calibration import Calibration
+from calibration import Calibration, Calibration_LatLong
 from timestamp_ocr import OCR_TimeStamp
 import traffic_light_region as light_state
 
@@ -136,7 +136,8 @@ class Inference():
         # Camera Calibration data: Used for velocity estimation
         self.enable_minimap = minimap
         self.enable_trajectory = trj_mode
-        self.Calib = Calibration()
+        # self.Calib = Calibration()
+        self.Calib = Calibration_LatLong()
         
         # Parameters for velocity estimation
         self.trackDict = defaultdict(list)
@@ -165,32 +166,37 @@ class Inference():
         else:
             self.tracker = self.Objtracker.update()
         
-    def VelocityEstimation(self, velocity_array):    
-        for detection in self.tracker:
-            class_id = detection[5]
-            center_x = (detection[0] + detection[2])/2 
+    # def VelocityEstimation(self, velocity_array):    
+    #     for detection in self.tracker:
+    #         class_id = detection[5]
+    #         center_x = (detection[0] + detection[2])/2 
 
-            if class_id in (0, 1, 2): 
-                _, max_y = sorted((detection[1], detection[3])) # Foot of bbox for classes Escooter, Cyclist, and Pedestrian
-            elif class_id in (3, 4, 5, 6):
-                max_y = (detection[1] + detection[3])/2         # Center of bbox for other classes
+    #         if class_id in (0, 1, 2): 
+    #             _, max_y = sorted((detection[1], detection[3])) # Foot of bbox for classes Escooter, Cyclist, and Pedestrian
+    #         elif class_id in (3, 4, 5, 6):
+    #             max_y = (detection[1] + detection[3])/2         # Center of bbox for other classes
 
-            trackID = int(detection[9])
-            self.trackDict[trackID].append((int(center_x), int(max_y)))
+    #         trackID = int(detection[9])
+    #         self.trackDict[trackID].append((int(center_x), int(max_y)))
             
-            if len(self.trackDict[trackID]) > 10: 
-                previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
-                current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
-                previous_point = (previous_point[0],previous_point[1])
-                current_point = (current_point[0],current_point[1])
+    #         if len(self.trackDict[trackID]) > 10: 
+    #             # previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
+    #             # current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
+    #             # previous_point = (previous_point[0],previous_point[1])
+    #             # current_point = (current_point[0],current_point[1])
 
-                distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
-                speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
-                output_array = np.append(detection, [speed_kmH, self.trackDict[trackID][-2][0], self.trackDict[trackID][-2][1], self.trackDict])
-                velocity_array.append(output_array)
-                del self.trackDict[trackID][0]
+    #             # distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
+                
+    #             # previous_point = (previous_point[0], previous_point[1])
+    #             # current_point = (current_point[0], current_point[1])
+    #             distance_metres = self.calib.getDistance(self.trackDict[trackID][-2], self.trackDict[trackID][-1])
 
-        return velocity_array
+    #             speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
+    #             output_array = np.append(detection, [speed_kmH, self.trackDict[trackID][-2][0], self.trackDict[trackID][-2][1], self.trackDict])
+    #             velocity_array.append(output_array)
+    #             del self.trackDict[trackID][0]
+
+    #     return velocity_array
 
     def UpdateStorage_withTracker(self, output_dictionary):
         output = []
@@ -242,7 +248,7 @@ class Inference():
         vid_path, vid_writer = None, None
 
         ocr = OCR_TimeStamp()
-        ocr_vertical_offset = int((self.img_size[0]-self.target_resolution[0])/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
+        ocr_vertical_offset = int((self.img_size[0] - self.target_resolution[0])/2) # Since the imgSize for inference is 1920x1920 and input video is 1920x1080, some padding is automatically applied by Yolo. Offsetting the y-values for this padding.
         output_data = [] # For writing detection/tracker data to .csv for post processing
         Visualize = Visualizer(self.enable_minimap, self.enable_trajectory, self.update_rate, self.trajectory_retain_duration, self.save_class_frames)
         dt, seen = [0.0, 0.0, 0.0, 0.0], 0
@@ -252,7 +258,7 @@ class Inference():
             framecount += 1 
             if framecount < -1:
                 continue
-            elif framecount > 108000:
+            elif framecount > 2000:
                 print('[Warning] Video sequence exceeds one hour. Stopping inference due to possible ram issues')
                 break
 
