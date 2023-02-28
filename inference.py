@@ -39,6 +39,7 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
+
 class Inference():
     def __init__(self, input, model_weights, output, minimap, 
                 trj_mode, disable_post_process, save_infer_video, 
@@ -166,80 +167,56 @@ class Inference():
         else:
             self.tracker = self.Objtracker.update()
         
-    # def VelocityEstimation(self, velocity_array):    
-    #     for detection in self.tracker:
-    #         class_id = detection[5]
-    #         center_x = (detection[0] + detection[2])/2 
-
-    #         if class_id in (0, 1, 2): 
-    #             _, max_y = sorted((detection[1], detection[3])) # Foot of bbox for classes Escooter, Cyclist, and Pedestrian
-    #         elif class_id in (3, 4, 5, 6):
-    #             max_y = (detection[1] + detection[3])/2         # Center of bbox for other classes
-
-    #         trackID = int(detection[9])
-    #         self.trackDict[trackID].append((int(center_x), int(max_y)))
-            
-    #         if len(self.trackDict[trackID]) > 10: 
-    #             # previous_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-2])
-    #             # current_point = self.Calib.projection_pixel_to_world(self.trackDict[trackID][-1])
-    #             # previous_point = (previous_point[0],previous_point[1])
-    #             # current_point = (current_point[0],current_point[1])
-
-    #             # distance_metres = round(float(math.sqrt(math.pow(previous_point[0] - current_point[0], 2) + math.pow(previous_point[1] - current_point[1], 2))), 2)
-                
-    #             # previous_point = (previous_point[0], previous_point[1])
-    #             # current_point = (current_point[0], current_point[1])
-    #             distance_metres = self.calib.getDistance(self.trackDict[trackID][-2], self.trackDict[trackID][-1])
-
-    #             speed_kmH = round(float(distance_metres * self.fps * 3.6), 2)
-    #             output_array = np.append(detection, [speed_kmH, self.trackDict[trackID][-2][0], self.trackDict[trackID][-2][1], self.trackDict])
-    #             velocity_array.append(output_array)
-    #             del self.trackDict[trackID][0]
-
-    #     return velocity_array
-
     def UpdateStorage_withTracker(self, output_dictionary):
         output = []
         for detection in self.tracker:
-            temp_dict = deepcopy(output_dictionary)
-
-            temp_dict['Tracker_ID'] = int(detection[9])
-            temp_dict['Class_ID'] = int(detection[5])
-            temp_dict['Conf_Score'] = round(detection[4] * 100, 1)
-
             x1 = int(detection[0])
             y1 = int(detection[1])
             x2 = int(detection[2])
             y2 = int(detection[3])
-            temp_dict['BBOX_TopLeft'] = (x1, y1)
-            temp_dict['BBOX_BottomRight'] = (x2, y2)
+            width = x2 - x1
+            height = y2 - y1
+            aspect_ratio = width / height
             
-            center_x = (x1+x2)/2        
-            _, max_y = sorted((y1, y2))
-            temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
-            output.append(temp_dict)
+            if (width >= self.main_config_dict['bbox_width_range'][0] and width < self.main_config_dict['bbox_width_range'][1]) \
+                and (height >= self.main_config_dict['bbox_height_range'][0] and height < self.main_config_dict['bbox_height_range'][1]) \
+                and (aspect_ratio >= self.main_config_dict['bbox_ar_range'][0] and aspect_ratio < self.main_config_dict['bbox_ar_range'][1]):
+                center_x = (x1+x2)/2        
+                _, max_y = sorted((y1, y2))
+                temp_dict = deepcopy(output_dictionary)
+                temp_dict['Tracker_ID'] = int(detection[9])
+                temp_dict['Class_ID'] = int(detection[5])
+                temp_dict['Conf_Score'] = round(detection[4] * 100, 1)
+                temp_dict['BBOX_TopLeft'] = (x1, y1)
+                temp_dict['BBOX_BottomRight'] = (x2, y2)
+                temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
+                output.append(temp_dict)
         return output
     
     def UpdateStorage_onlyYolo(self, output_dictionary, pred):
         output = []
         for detection in pred:
-            temp_dict = deepcopy(output_dictionary)
-
-            temp_dict['Tracker_ID'] = None
-            temp_dict['Class_ID'] = int(detection[5].item())
-            temp_dict['Conf_Score'] = round(detection[4].item() * 100, 1)
-            
             x1 = int(detection[0])
             y1 = int(detection[1])
             x2 = int(detection[2])
             y2 = int(detection[3])
-            temp_dict['BBOX_TopLeft'] = (x1, y1)
-            temp_dict['BBOX_BottomRight'] = (x2, y2)
+            width = x2 - x1
+            height = y2 - y1
+            aspect_ratio = width / height
+            if (width >= self.main_config_dict['bbox_width_range'][0] and width < self.main_config_dict['bbox_width_range'][1]) \
+                and (height >= self.main_config_dict['bbox_height_range'][0] and height < self.main_config_dict['bbox_height_range'][1]) \
+                and (aspect_ratio >= self.main_config_dict['bbox_ar_range'][0] and aspect_ratio < self.main_config_dict['bbox_ar_range'][1]):
+                center_x = (x1+x2)/2        
+                _, max_y = sorted((y1, y2))
 
-            center_x = (x1+x2)/2        
-            _, max_y = sorted((y1, y2))
-            temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
-            output.append(temp_dict)
+                temp_dict = deepcopy(output_dictionary)
+                temp_dict['Tracker_ID'] = None
+                temp_dict['Class_ID'] = int(detection[5].item())
+                temp_dict['Conf_Score'] = round(detection[4].item() * 100, 1)
+                temp_dict['BBOX_TopLeft'] = (x1, y1)
+                temp_dict['BBOX_BottomRight'] = (x2, y2)
+                temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
+                output.append(temp_dict)
         return output
 
     def runInference(self):
@@ -343,7 +320,7 @@ class Inference():
                 for c in pred[:, -1].unique():
                     n = (pred[:, -1] == c).sum()  # detections per class
                     s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "  # add to string 
-        
+
             # Save the images or videos
             if self.inference_mode == 'SingleImage':
                 self.frame = Visualize.drawBBOX(pred, im0)

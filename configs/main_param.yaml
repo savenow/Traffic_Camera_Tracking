@@ -10,6 +10,10 @@ max_det: 1000
 
 trajectory_retain_duration: 250 # Number of frames to retain the trajectory visualization for each tracker
 
+bbox_width_range: [10, 400] # Min-max value of bbox width to be considered
+bbox_height_range: [20, 400] # Min-max value of bbox height to be considered
+bbox_ar_range: [0.15, 2.5] # Min-max value of bbox aspect ratio (width/height) to be considered
+
 # SORT tracker params
 max_age: 50
 min_hits: 5

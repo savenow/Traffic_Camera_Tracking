@@ -62,6 +62,14 @@ class Calibration_LatLong():
         py = (sum[1] / sum[2]) * self.offset_product[1] + self.offset_sum[1]
         return px, py
 
+    def getLatLong_batchTransform(self, x_img, y_img):
+        src_points_withZ = np.expand_dims(np.vstack((x_img, y_img, np.ones((x_img.shape[0],)))).T, -1)
+        temp_p = self.homo_mtx.dot(src_points_withZ)
+        sum = np.sum(temp_p ,2)
+        px = (sum[0] / sum[2]) * self.offset_product[0] + self.offset_sum[0]
+        py = (sum[1] / sum[2]) * self.offset_product[1] + self.offset_sum[1]
+        return px, py
+    
     def getDistance(self, img_point_1, img_point_2):
         point_1_lat, point_1_long = self.getLatLong(img_point_1)
         point_2_lat, point_2_long = self.getLatLong(img_point_2)

@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from string import ascii_letters, digits
 import datefinder
 
+if os.name == "nt":
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+
 class OCR_TimeStamp:
     def __init__(self):
         self.timeOCR = None

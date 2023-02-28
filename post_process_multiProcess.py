@@ -67,6 +67,7 @@ class PostProcess():
         self.angleDict = defaultdict(list)
         self.kf = KalmanFilter()
         self.angle = Angle()
+        self.camera_calib = Calibration_LatLong()
         
 
     def removeErrorTimers(self, df):
@@ -591,8 +592,6 @@ class PostProcess():
             df_interpolated_dup (pd.Dataframe): Dataframe containing the speed of each tracker in a separate column 'Speed'
         """
         rolling_window_size = self.main_config_dict['velocity_estimation_rolling_window_size']
-        # camera_calib = Calibration()
-        camera_calib = Calibration_LatLong()
         df_interpolated_dup = interpolated_df.copy()
         unique_trackers = df_interpolated_dup.Tracker_ID.unique()
         tracker_group = df_interpolated_dup.groupby('Tracker_ID')
@@ -632,7 +631,7 @@ class PostProcess():
                         }   
                     else:
                         # distance_metres = float(math.sqrt(math.pow(prev_point[0] - base_coordinate[0], 2) + math.pow(prev_point[1] - base_coordinate[1], 2))) # Finding the euclidean distance between current and previous point
-                        distance_metres = camera_calib.getDistance(previous_point, current_point)
+                        distance_metres = self.camera_calib.getDistance(previous_point, current_point)
                         speed_kmH = float(distance_metres * self.video_fps * 3.6) # Converting meters/s to km/h and update rate is equal to video's fps (default 30, this is also the rate at which data is sampled in the .csv files)
                         # previous_point = previous_point
 
@@ -773,24 +772,24 @@ class PostProcess():
 
     def Save_VRU_count(self, df, path):
         """
-        gives:
+        Gives:
         1. the counts for each class (e.g. no. of pedestrians, no. of cycliste, etc.)
         2. the direction sequence for each unique class object.
             - Angle in 10° to 80° (NE), Angle in 80° to 100° (N), Angle in 100° to 170° (NW),
               Angle in 170° to 190° (W), Angle in 190° to 260° (SW), Angle in 260° to 280° (S),
               Angle in 280° to 350° (SE), Angle in 350° to 360° (E), Angle in 0° to 10° (E)
 
-                      (90°)
-                        N
-                        |
-                (NW)    |   (NE)
-                        |
-     (180°) W <-------------------> E (0° or 360°)
-                        |
-                (SW)    |   (SE)
-                        |
-                        S
-                      (270°)
+                                (90°)
+                                    N
+                                    |
+                            (NW)    |   (NE)
+                                    |
+                (180°) W <-------------------> E (0° or 360°)
+                                    |
+                            (SW)    |   (SE)
+                                    |
+                                    S
+                                (270°)
 
 
         """
@@ -879,29 +878,67 @@ class PostProcess():
                     f.writelines(f"Bus_trk_id-{int(k[1])}: {' --> '.join(map(str, l))}\n")
             
             f.close()
+
+    def convert2LatLong(self, final_df):
+        """
+        Converts image coordinates to Latitude-Longitude
+        Steps overview:
+            1. Estimate the footpoint for bbox
+                - For Class_IDs < 3, that are VRUs, (x_midpoint, y_max) is taken as footpoint
+                - For other classes, (x_midpoint, y_midpoint) is taken as footprint
+            2. Multiply img_coordinates with precalculated homography matrices to get Lat, Long values
+
+            Args:
+                final_df (pd.Dataframe): Dataframe after post-processing
+            
+            Returns:
+                df_final (pd.Dataframe): Dataframe containing lat, long values
+        """
+
+        df_final = final_df.copy()
+
+        df_final["BBOX_ground_x_img"] = (df_final["BBOX_TopLeft_x"] + df_final["BBOX_BottomRight_x"]) / 2
+        df_final["BBOX_ground_y_img"] = 0.0
+
+        df_final["BBOX_ground_y_img"][df_final["Class_ID"] < 3] = df_final["BBOX_BottomRight_y"]
+        df_final["BBOX_ground_y_img"][df_final["Class_ID"] >= 3] = (df_final["BBOX_TopLeft_y"] + df_final["BBOX_BottomRight_y"]) / 2
+
+        x_img = df_final["BBOX_ground_x_img"].to_numpy()
+        y_img = df_final["BBOX_ground_y_img"].to_numpy()
+        lat, long = self.camera_calib.getLatLong_batchTransform(x_img, y_img)
+        df_final = df_final.drop(columns=["BBOX_ground_x_img", "BBOX_ground_y_img"])
+        df_final["latitude"] = lat
+        df_final["longitude"] = long
         
+        return df_final
+
+
     def run(self): # Main function of the class which runs all the post-processing and saves the video
         df_duplicate = self.detections_dataframe.copy()
         removed_df = self.remove_tracker(df_duplicate)
         print('\n-> Finished cleaning trackers')
-        removed_df.to_csv(f'{self.output_directory}/{self.file_name}_cleaned.csv')
+        #removed_df.to_csv(f'{self.output_directory}/{self.file_name}_cleaned.csv')
 
         interpolated_df = self.interpolate_data(removed_df)
-        interpolated_df.to_csv(f'{self.output_directory}/{self.file_name}_interpolated.csv')
+        #interpolated_df.to_csv(f'{self.output_directory}/{self.file_name}_interpolated.csv')
         print('-> Finished interpolating missing tracker coordinates')
 
         speed_df = self.velocity_estimation(interpolated_df)
-        speed_df.to_csv(f'{self.output_directory}/{self.file_name}_speed.csv')
+        #speed_df.to_csv(f'{self.output_directory}/{self.file_name}_speed.csv')
         print('-> Finished calculating the velocities')
 
         self.final_df = self.class_id_matching(speed_df)
-        self.final_df.to_csv(f'{self.output_directory}/{self.file_name}_final.csv')
+        #self.final_df.to_csv(f'{self.output_directory}/{self.file_name}_classID.csv')
         print('-> Finished Class_ID Matching')
 
         df_with_index = self.group_by_internalTimer_with_index(self.final_df)
         df_latest = self.Save_angle_to_csv(df_with_index, self.final_df)
-        df_latest.to_csv(f'{self.output_directory}/{self.file_name}_latest.csv')
-        print('-> Finished Saving Heading_angle')
+        #df_latest.to_csv(f'{self.output_directory}/{self.file_name}_heading.csv')
+        print('-> Finished procesing heading_angle')
+
+        df_latest = self.convert2LatLong(df_latest)
+        df_latest.to_csv(f'{self.output_directory}/{self.file_name}_final.csv')
+        print('-> Finished converting bbox coordinates to Latitude-Longitude')
         print('\nNow, saving the video ...')
 
         self.Save_VRU_count(df_latest, self.output_directory)
