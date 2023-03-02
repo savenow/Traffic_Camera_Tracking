@@ -5,19 +5,19 @@ fps: 30 ## Flag not tested. Change with caution !!
 
 # YoloV5 Params
 conf_thres: 0.35
-iou_thres: 0.5
+iou_thres: 0.4
 max_det: 1000
 
 trajectory_retain_duration: 250 # Number of frames to retain the trajectory visualization for each tracker
 
-bbox_width_range: [10, 400] # Min-max value of bbox width to be considered
+bbox_width_range: [10, 400]  # Min-max value of bbox width to be considered
 bbox_height_range: [20, 400] # Min-max value of bbox height to be considered
-bbox_ar_range: [0.15, 2.5] # Min-max value of bbox aspect ratio (width/height) to be considered
+bbox_ar_range: [0.15, 2.5]   # Min-max value of bbox aspect ratio (width/height) to be considered
 
 # SORT tracker params
-max_age: 50
+max_age: 70
 min_hits: 5
-iou_threshold: 0.3
+iou_threshold: 0.25
 
 # OCR-time detection box params
 is_ocr_enabled: true ## Flag not tested. Change with caution !! 

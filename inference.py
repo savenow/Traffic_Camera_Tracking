@@ -21,10 +21,13 @@ sys.path.append('./yolo_v5_main_files')
 from models.common import DetectMultiBackend, AutoShape
 from utils.datasets import LoadImages
 from utils.torch_utils import time_sync
-from utils.general import LOGGER, non_max_suppression, scale_coords, check_img_size, print_args
+from utils.general import LOGGER, non_max_suppression, \
+    scale_coords, check_img_size, print_args, xyxy2xywh
 from hubconf import custom
 
 from sort_yoloV5 import Sort
+from deep_sort.deep_sort import DeepSort
+
 from visualizer import Visualizer, Minimap
 from calibration import Calibration, Calibration_LatLong
 from timestamp_ocr import OCR_TimeStamp
@@ -131,8 +134,18 @@ class Inference():
         self.model = model
 
         # Initialize Tracker
-        self.Objtracker = Sort(max_age=self.main_config_dict['max_age'], min_hits=self.main_config_dict['min_hits'], iou_threshold=self.main_config_dict['iou_threshold'])
+        self.Objtracker = Sort(
+            max_age=self.main_config_dict['max_age'], 
+            min_hits=self.main_config_dict['min_hits'], 
+            iou_threshold=self.main_config_dict['iou_threshold']
+        )
         self.Objtracker.reset_count()
+
+        self.Objtracker_DeepSort = DeepSort(
+            "deep_sort/deep/checkpoint/ckpt.t7", 
+            max_dist=0.2, max_iou_distance=0.7, max_age=70, 
+            n_init=3, nn_budget=100, use_cuda=True
+        )
 
         # Camera Calibration data: Used for velocity estimation
         self.enable_minimap = minimap
@@ -156,6 +169,7 @@ class Inference():
         # Main Inference
         self.runInference()
     
+    # ---- Normal SORT -----
     def UpdateTracker(self, pred):
         if len(pred) > 0:
             dets = []
@@ -163,10 +177,12 @@ class Inference():
                 dets.append(items[:].tolist())
         
             dets = np.array(dets)
+            # print(dets)
+            # exit()
             self.tracker = self.Objtracker.update(dets)
         else:
             self.tracker = self.Objtracker.update()
-        
+    
     def UpdateStorage_withTracker(self, output_dictionary):
         output = []
         for detection in self.tracker:
@@ -192,6 +208,50 @@ class Inference():
                 temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
                 output.append(temp_dict)
         return output
+    
+    # ---- Deep-SORT -----
+    def UpdateTracker_deepSort(self, pred, im0):
+        if len(pred) > 0:
+            pred = pred.cpu()
+            bbox_xywh = xyxy2xywh(pred[:, :4])
+            confs = pred[:, 4:5]
+            labels = pred[:, 5:6]
+            output = self.Objtracker_DeepSort.update(
+                bbox_xywh, confs, labels, im0
+            )
+            self.tracker = []
+            for det in output:
+                self.tracker.append([det[0], det[1], det[2], det[3], det[6], det[5], 0.0, 0.0, 0.0, det[4]])
+            # #self.tracker = np.hstack((self.tracker, np.zeros((self.tracker.shape[0], 3))), dtype=self.tracker.dtype)
+            # print(self.tracker)
+
+    # def UpdateStorage_withTracker_deepSort(self, output_dictionary):
+    #     output = []
+    #     for detection in self.tracker:
+    #         x1 = int(detection[0])
+    #         y1 = int(detection[1])
+    #         x2 = int(detection[2])
+    #         y2 = int(detection[3])
+    #         width = x2 - x1
+    #         height = y2 - y1
+    #         aspect_ratio = width / height
+            
+    #         if (width >= self.main_config_dict['bbox_width_range'][0] and width < self.main_config_dict['bbox_width_range'][1]) \
+    #             and (height >= self.main_config_dict['bbox_height_range'][0] and height < self.main_config_dict['bbox_height_range'][1]) \
+    #             and (aspect_ratio >= self.main_config_dict['bbox_ar_range'][0] and aspect_ratio < self.main_config_dict['bbox_ar_range'][1]):
+    #             center_x = (x1+x2)/2        
+    #             _, max_y = sorted((y1, y2))
+    #             temp_dict = deepcopy(output_dictionary)
+    #             temp_dict['Tracker_ID'] = int(detection[4])
+    #             temp_dict['Class_ID'] = int(detection[5])
+    #             temp_dict['Conf_Score'] = round(detection[6] * 100, 1)
+    #             temp_dict['BBOX_TopLeft'] = (x1, y1)
+    #             temp_dict['BBOX_BottomRight'] = (x2, y2)
+    #             temp_dict['Minimap_Coordinates'] = self.Minimap_storage.projection_image_to_map_noScaling(center_x, max_y)
+    #             output.append(temp_dict)
+    #     return output
+        
+    
     
     def UpdateStorage_onlyYolo(self, output_dictionary, pred):
         output = []
@@ -235,7 +295,7 @@ class Inference():
             framecount += 1 
             if framecount < -1:
                 continue
-            elif framecount > 2000:
+            elif framecount > 5000:
                 print('[Warning] Video sequence exceeds one hour. Stopping inference due to possible ram issues')
                 break
 
@@ -329,6 +389,7 @@ class Inference():
             elif self.inference_mode == 'Video':
                 # Update the tracker
                 self.UpdateTracker(pred)
+                #self.UpdateTracker_deepSort(pred, im0)
 
                 # Storing values for post-processing
                 if len(self.tracker) > 0:
