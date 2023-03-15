@@ -4,7 +4,7 @@ target_resolution: [1080, 1920]
 fps: 30 ## Flag not tested. Change with caution !! 
 
 # YoloV5 Params
-conf_thres: 0.2
+conf_thres: 0.35
 iou_thres: 0.4
 max_det: 1000
 

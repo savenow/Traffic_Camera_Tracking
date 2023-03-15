@@ -77,6 +77,7 @@ class Minimap():
 class Visualizer():
     def __init__(self, minimap, trajectory_mode, trajectory_update_rate, trajectory_retain_duration, save_class_frames):
         self.classID_dict = {
+            -1: ("FrameDiff", (0, 0, 0)),
             0: ("Escooter", (0, 90, 255)), 
             1: ("Pedestrians", (255, 90, 0)), 
             2: ("Cyclists", (90, 255, 0)),

@@ -295,7 +295,7 @@ class Inference():
             framecount += 1 
             if framecount < -1:
                 continue
-            elif framecount > 5000:
+            elif framecount > 108000:
                 print('[Warning] Video sequence exceeds one hour. Stopping inference due to possible ram issues')
                 break
 
@@ -389,7 +389,7 @@ class Inference():
             elif self.inference_mode == 'Video':
                 # Update the tracker
                 self.UpdateTracker(pred)
-                #self.UpdateTracker_deepSort(pred, im0)
+                # self.UpdateTracker_deepSort(pred, im0)
 
                 # Storing values for post-processing
                 if len(self.tracker) > 0:
